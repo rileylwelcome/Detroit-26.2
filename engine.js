@@ -119,6 +119,7 @@
       logs: {},
       days: {},
       food: {},
+      foods: {},
       checkins: [],
       checklist: {},
       drafts: {}
@@ -351,7 +352,16 @@
     const center = stats.center;
     const days = [];
 
-    if (travel) {
+    if (w < 0) {
+      // The days before the plan starts: log anything, nothing here is required.
+      days.push(liftSession(w, 0, 'upperA'));
+      days.push(milesSession(w, 1, 3, 'easy', 'Easy run', null, center));
+      days.push(liftSession(w, 2, 'lower'));
+      days.push(liftSession(w, 3, 'upperB', { required: false }));
+      days.push(cardioSession(w, 4, 30, 'stairs'));
+      days.push(milesSession(w, 5, 3, 'easy', 'Easy run', null, center));
+      days.push(restSession(w, 6));
+    } else if (travel) {
       days.push({ id: `w${w}d0`, w, d: 0, date: dateOf(w, 0), type: 'recovery', title: 'Travel day', minutes: 0, required: false, subtitle: 'Walk when you can' });
       days.push(milesSession(w, 1, 3, 'easy', 'Easy run', null, center));
       days.push(liftSession(w, 2, 'travel', { minutes: 40, subtitle: "Use what's available", required: true }));
@@ -446,12 +456,12 @@
         : runGoal(s.run, stats);
     });
 
-    return { w, start: weekStart(w), end: dateOf(w, 6), phase, deload, bare, travel, finals, shift, days, stats };
+    return { w, pre: w < 0, start: weekStart(w), end: dateOf(w, 6), phase, deload, bare, travel, finals, shift, days, stats };
   }
 
   function sessionFromLog(state, w, d, today) {
     // Light rebuild used while reading paces, so it cannot call runStats again.
-    if (w < 6 && w !== FINALS_WEEK && (d === 1 || d === 5)) {
+    if (w >= 0 && w < 6 && w !== FINALS_WEEK && (d === 1 || d === 5)) {
       const shift = runShift(state, w, today);
       const step = FOUNDATION[clamp(w - shift, 0, 4)];
       const spec = d === 1 ? step.tue : step.sat;
@@ -513,6 +523,13 @@
 
         const base = top == null ? st.load : top;
         const known = st.load != null;
+        if (w < 0) {
+          // Logs before the plan starts go on the graphs but never move a set goal.
+          if (!known) st.load = base;
+          st.status = 'hold';
+          st.reason = 'Saved to your graphs. Plan goals start Monday, November 9.';
+          return;
+        }
         if (w < 2) {
           // Weeks 1 and 2 stay deliberately light: never raise the goal, adopt a lower or first weight.
           if (!known) st.load = base;
@@ -579,7 +596,7 @@
   function liftsDown(ls, today) {
     let down = 0;
     Object.keys(STRENGTH_BESTS).forEach((id) => {
-      const h = (ls[id] && ls[id].history) || [];
+      const h = ((ls[id] && ls[id].history) || []).filter((x) => x.w >= 2);
       const recent = h.filter((x) => diffDays(today, x.date) <= 14);
       const older = h.filter((x) => diffDays(today, x.date) > 14);
       if (!recent.length || !older.length) return;
@@ -607,6 +624,7 @@
     };
   }
   const RICE_CUP = 205;
+  const RICE_CARB = RICE_CUP / 4; // keeps a meal's macros adding up to its calories as portions change
   const ALMOND_OZ = 165;
   function fractionText(x) {
     const whole = Math.floor(x + 1e-6);
@@ -643,20 +661,88 @@
     }
     const riceCal = (cups) => Math.round((cups - 0) * RICE_CUP);
     const meals = [
-      { id: 'pre', time: '7:15 am', name: 'Pre-training', portions: '1 banana, coffee', portionsGuide: '1 banana, coffee', cal: 105, pro: 1 },
-      { id: 'burrito', time: '9:30 am', name: 'Breakfast burrito', portions: '1 egg, 1 cup egg whites, 3 oz raw 93/7 beef, 150 g potatoes, onions, salsa, 1 carb-counter tortilla', portionsGuide: 'Palm of beef, 1 egg and a good pour of egg whites, a fist of potatoes, onions, salsa, 1 tortilla', cal: 510, pro: 58 },
-      { id: 'lunch', time: '12:30 pm', name: 'Chicken bowl', portions: `6 oz raw chicken breast, ${fractionText(lunchRice)} cup${lunchRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/2 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of chicken, ${lunchRice >= 1.5 ? '2 fists' : '1 fist'} of rice, a fist of vegetables, 1/2 avocado, a drizzle of Bachan's`, cal: 680 - riceCal(1.5) + riceCal(lunchRice), pro: 46 },
-      { id: 'snack', time: '4:30 pm', name: 'Portable snack', portions: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? '1 oz' : '1/2 oz'} almonds`, portionsGuide: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? 'a small handful' : 'half a handful'} of almonds`, cal: 420 - (almonds === 1 ? 0 : 82), pro: 31 },
-      { id: 'dinner', time: '8:45 pm', name: 'Dinner', portions: `6 oz raw trout or chicken, ${fractionText(dinnerRice)} cup${dinnerRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/4 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of trout or chicken, ${dinnerRice >= 1.25 ? '1 big fist' : '1 fist'} of rice, a fist of vegetables, 1/4 avocado, a drizzle of Bachan's`, cal: 610 - riceCal(1) + riceCal(dinnerRice), pro: 39 },
-      { id: 'dessert', time: '9:45 pm', name: 'Planned dessert', portions: '1 no-sugar-added strawberry Outshine bar', portionsGuide: '1 no-sugar-added strawberry Outshine bar', cal: 50, pro: 0 }
+      { id: 'pre', time: '7:15 am', name: 'Pre-training', portions: '1 banana, coffee', portionsGuide: '1 banana, coffee', cal: 105, pro: 1, carb: 27, fat: 0 },
+      { id: 'burrito', time: '9:30 am', name: 'Breakfast burrito', portions: '1 egg, 1 cup egg whites, 3 oz raw 93/7 beef, 150 g potatoes, onions, salsa, 1 carb-counter tortilla', portionsGuide: 'Palm of beef, 1 egg and a good pour of egg whites, a fist of potatoes, onions, salsa, 1 tortilla', cal: 510, pro: 58, carb: 38, fat: 14 },
+      { id: 'lunch', time: '12:30 pm', name: 'Chicken bowl', portions: `6 oz raw chicken breast, ${fractionText(lunchRice)} cup${lunchRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/2 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of chicken, ${lunchRice >= 1.5 ? '2 fists' : '1 fist'} of rice, a fist of vegetables, 1/2 avocado, a drizzle of Bachan's`, cal: 680 - riceCal(1.5) + riceCal(lunchRice), pro: 46, carb: Math.round(79 + (lunchRice - 1.5) * RICE_CARB), fat: 20 },
+      { id: 'snack', time: '4:30 pm', name: 'Portable snack', portions: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? '1 oz' : '1/2 oz'} almonds`, portionsGuide: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? 'a small handful' : 'half a handful'} of almonds`, cal: 420 - (almonds === 1 ? 0 : 82), pro: 31, carb: 34 - (almonds === 1 ? 0 : 3), fat: 18 - (almonds === 1 ? 0 : 7) },
+      { id: 'dinner', time: '8:45 pm', name: 'Dinner', portions: `6 oz raw trout or chicken, ${fractionText(dinnerRice)} cup${dinnerRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/4 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of trout or chicken, ${dinnerRice >= 1.25 ? '1 big fist' : '1 fist'} of rice, a fist of vegetables, 1/4 avocado, a drizzle of Bachan's`, cal: 610 - riceCal(1) + riceCal(dinnerRice), pro: 39, carb: Math.round(68 + (dinnerRice - 1) * RICE_CARB), fat: 20 },
+      { id: 'dessert', time: '9:45 pm', name: 'Planned dessert', portions: '1 no-sugar-added strawberry Outshine bar', portionsGuide: '1 no-sugar-added strawberry Outshine bar', cal: 50, pro: 0, carb: 11, fat: 0 }
     ];
     return { meals, total: meals.reduce((a, m) => a + m.cal, 0), protein: meals.reduce((a, m) => a + m.pro, 0), lunchRice, dinnerRice, almonds };
   }
+  /* What's been eaten today: logged foods plus any planned meals checked off. */
+  function foodTotals(day, plan) {
+    const out = { cal: 0, pro: 0, carb: 0, fat: 0 };
+    if (!day) return out;
+    (day.items || []).forEach((x) => {
+      out.cal += Number(x.cal) || 0;
+      out.pro += Number(x.p) || 0;
+      out.carb += Number(x.c) || 0;
+      out.fat += Number(x.f) || 0;
+    });
+    (plan ? plan.meals : []).forEach((m) => {
+      if (!day.meals || !day.meals[m.id]) return;
+      out.cal += m.cal;
+      out.pro += m.pro;
+      out.carb += m.carb;
+      out.fat += m.fat;
+    });
+    Object.keys(out).forEach((k) => { out[k] = Math.round(out[k] * 10) / 10; });
+    return out;
+  }
+  /* Where one number stands against its daily range. */
+  function rangeStatus(value, lo, hi, unit) {
+    const u = unit ? ` ${unit}` : '';
+    const n = (v) => Math.round(v).toLocaleString('en-US');
+    if (value > hi) return { state: 'over', text: `${n(value - hi)}${u} over your range` };
+    if (value >= lo) return { state: 'in', text: 'In your range' };
+    return { state: 'under', text: `${n(lo - value)}${u} to reach your range` };
+  }
+  function scaleFood(base, amount) {
+    const f = Number(amount) / Number(base.amount);
+    const one = (v) => Math.round(Number(v) * f * 10) / 10;
+    return { cal: Math.round(Number(base.cal) * f), p: one(base.p), c: one(base.c), f: one(base.f) };
+  }
+  const caloriesFromMacros = (p, c, f) => Math.round((Number(p) || 0) * 4 + (Number(c) || 0) * 4 + (Number(f) || 0) * 9);
+
+  /* Every logged session of one exercise, oldest first, for its graph. */
+  function exerciseHistory(state, exId) {
+    const ex = EX[exId];
+    const ids = Object.keys(EX).filter((k) => EX[k].name === ex.name);
+    const rows = [];
+    Object.keys(state.logs).forEach((key) => {
+      const log = state.logs[key];
+      if (log.type !== 'lift' || !log.exercises) return;
+      const m = /^w(-?\d+)d(\d)$/.exec(key);
+      ids.forEach((id) => {
+        const entry = log.exercises[id];
+        if (!entry) return;
+        const sets = (entry.sets || []).filter((s) => s.r !== '' && s.r != null && Number.isFinite(Number(s.r)));
+        if (!sets.length) return;
+        const weights = sets.map((s) => (s.w === '' || s.w == null ? 0 : Number(s.w)));
+        const top = Math.max(...weights);
+        rows.push({
+          date: log.date || dateOf(Number(m[1]), Number(m[2])),
+          order: Number(m[1]) * 7 + Number(m[2]),
+          top,
+          bestReps: Math.max(...sets.map((s) => Number(s.r))),
+          sets: sets.map((s) => ({ w: s.w === '' || s.w == null ? null : Number(s.w), r: Number(s.r) }))
+        });
+      });
+    });
+    rows.sort((a, b) => (a.date === b.date ? a.order - b.order : a.date < b.date ? -1 : 1));
+    const usesWeight = rows.some((r) => r.top > 0);
+    const unit = ex.kind === 'time' ? 'sec' : usesWeight ? 'lb' : 'reps';
+    const label = ex.kind === 'time' ? 'Longest hold' : usesWeight ? (ex.kind === 'assist' ? 'Assistance' : 'Top weight') : 'Most reps';
+    rows.forEach((r) => { r.value = unit === 'lb' ? r.top : r.bestReps; });
+    return { rows, unit, label, name: ex.name };
+  }
+
   function trackingToday(state, date) {
     const w = weekOf(date);
     if (state.targets.mode === 'portions') return { kind: 'portions', text: 'Portion guides are on, so nothing needs weighing.' };
     if (w === TRAVEL_WEEK || date === '2027-01-11') return { kind: 'off', text: 'Skip food tracking this week. Aim for protein at each meal.' };
-    if (w < 0) return { kind: 'off', text: 'Tracking starts Monday, November 9.' };
+    if (w < 0) return { kind: 'off', text: 'Your plan starts Monday, November 9. You can log food now.' };
     if (w < 2) return { kind: 'weigh', text: 'Weigh everything for your first two weeks.' };
     if (dayIndex(date) === 2) return { kind: 'weigh', text: 'Wednesday spot-check: weigh everything today.' };
     return { kind: 'relaxed', text: 'No weighing today. Your next spot-check is Wednesday.' };
@@ -998,7 +1084,7 @@
     START, RACE, HALF, LAST_WEEK, TRAVEL_WEEK, FINALS_WEEK, EX, LIFTS, STRENGTH_BESTS, DAY_NAMES, DAY_SHORT, CHECKPOINTS, CALORIE_FLOOR,
     addDays, diffDays, fmtDate, dayIndex, weekOf, weekStart, dateOf, fmtPace, fmtDur, fmtTime, e1rm, increment,
     initialState, phaseOf, buildWeek, liftState, macros, mealPlan, trackingToday, longRunFuel, readiness, backOff,
-    loadText, liftChanges, weekSummary, plannedMiles, checkinDate, waistDue, dueCheckin, nextCheckinWeek, checkinInstructions, evaluateCheckin,
+    loadText, liftChanges, foodTotals, rangeStatus, scaleFood, caloriesFromMacros, exerciseHistory, weekSummary, plannedMiles, checkinDate, waistDue, dueCheckin, nextCheckinWeek, checkinInstructions, evaluateCheckin,
     buildCheckinRecord, checkinSummaryText, nextCheckpoint, runStats, runShift, countsAsPlanned, buildIcs, isScheduledDeload, MARATHON_TIERS
   };
 });

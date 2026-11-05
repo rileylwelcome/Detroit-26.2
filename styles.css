@@ -123,9 +123,9 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .weeknav .mid { text-align: center; min-width: 0; }
 .weeknav .mid b { display: block; font: 700 20px/1.1 var(--display); }
 .weeknav .mid span { color: var(--ink-2); font-size: 13.5px; }
-.daytabs { display: flex; gap: 7px; overflow-x: auto; padding: 2px 16px 12px; margin: 0 -16px 2px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.daytabs { display: flex; gap: 7px; overflow-x: auto; padding: 2px 16px 12px; margin: 0 -16px 2px; scrollbar-width: none; }
 .daytabs::-webkit-scrollbar { display: none; }
-.daytab { flex: none; scroll-snap-align: center; min-width: 76px; min-height: 58px; padding: 7px 10px; border-radius: 12px; background: var(--card); text-align: left; position: relative; }
+.daytab { flex: none; min-width: 76px; min-height: 58px; padding: 7px 10px; border-radius: 12px; background: var(--card); text-align: left; position: relative; }
 .daytab .d { display: block; font-size: 12.5px; color: var(--ink-2); line-height: 1.2; }
 .daytab .n { display: block; font: 600 16px/1.15 var(--display); white-space: nowrap; }
 .daytab.on { background: var(--ink); color: #0A1216; }
@@ -295,3 +295,28 @@ nav.tabs button.on { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Fuel: where today stands against the goals */
+.fuelhero { display: grid; grid-template-columns: minmax(118px, 38%) 1fr; gap: 14px; align-items: center; }
+.fueldial .dial { pointer-events: none; }
+.fuelbars .macro:first-child { margin-top: 0; }
+.fuelbars .macro { margin-top: 10px; }
+.fuelbars .macro-top span { font-size: 18px; }
+.macro-top small { font: 500 12.5px var(--body); color: var(--ink-2); }
+.macro-note { color: var(--ink-2); font-size: 12.5px; margin-top: 3px; line-height: 1.2; }
+.macro-note.center { text-align: center; margin-top: 5px; }
+.food { display: flex; justify-content: space-between; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 11px 16px; border-top: 1px solid var(--line); }
+.food:first-child { border-top: 0; }
+.food-l { min-width: 0; }
+.food-l b { display: block; font-weight: 600; line-height: 1.25; }
+.food-l span { color: var(--ink-2); font-size: 13.5px; }
+.food-r { flex: none; text-align: right; font: 700 20px/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.food-r span { display: block; font: 400 12px var(--body); color: var(--ink-2); }
+.savedfoods { margin-top: 12px; max-height: 248px; overflow-y: auto; }
+.savedfood { display: flex; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; align-items: center; text-align: left; border-top: 1px solid var(--line); font-size: 15px; }
+.savedfood .muted { font-size: 13px; flex: none; }
+select.inp { -webkit-appearance: none; appearance: none; }
+details.numbers { margin-top: 8px; }
+details.numbers summary { color: var(--blue); font-weight: 500; font-size: 14.5px; min-height: 40px; display: flex; align-items: center; cursor: pointer; list-style: none; }
+details.numbers summary::-webkit-details-marker { display: none; }
+.ex .link.small { font-size: 14px; min-height: 40px; margin-top: 4px; }

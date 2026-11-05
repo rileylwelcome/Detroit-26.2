@@ -1,6 +1,6 @@
 /* Keeps the app working offline. Online, it fetches the newest files first,
    so anything you upload to GitHub reaches your phone on the next open. */
-const CACHE = 'detroit262-v1';
+const CACHE = 'detroit262-v2';
 const FILES = [
   './',
   'index.html',
