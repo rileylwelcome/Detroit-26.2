@@ -320,3 +320,15 @@ details.numbers { margin-top: 8px; }
 details.numbers summary { color: var(--blue); font-weight: 500; font-size: 14.5px; min-height: 40px; display: flex; align-items: center; cursor: pointer; list-style: none; }
 details.numbers summary::-webkit-details-marker { display: none; }
 .ex .link.small { font-size: 14px; min-height: 40px; margin-top: 4px; }
+
+/* Garmin import */
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+label.btn { position: relative; cursor: pointer; }
+.gi { background: var(--card); border-radius: 14px; padding: 13px 14px; margin-bottom: 10px; }
+.gi b { display: block; font-weight: 600; line-height: 1.25; }
+.gi-top span { color: var(--ink-2); font-size: 14px; }
+.gi-to { color: var(--good); font-size: 14px; margin-top: 3px; }
+.gi .chip { min-height: 38px; }
+.gi-facts { color: var(--ink-2); font-size: 14px; margin-top: 3px; }
+.gi details.numbers { margin-top: 4px; }
+.gi details.numbers .q { margin-bottom: 10px; }

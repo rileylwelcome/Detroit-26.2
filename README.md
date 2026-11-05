@@ -30,8 +30,9 @@ Upload the changed file to the same repository. Your phone picks it up the next 
 
 | When | What updates |
 | --- | --- |
-| You finish a workout | Goal weights, from week 3 on |
+| You finish a workout | Your next lift targets, with automatic increases from week 3 on |
 | You save a run | Easy pace goal, run time goals, and race estimates after a hard effort |
+| You import a Garmin CSV | Your runs and cardio, easy pace goal, weekly miles, and running history |
 | You finish a weekly check-in | Calories, macros, meal portions, deload weeks, and bare-minimum weeks |
 
 ## Files

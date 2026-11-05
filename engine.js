@@ -56,15 +56,15 @@
 
   /* ---------- Lifting plan ---------- */
   const EX = {
-    incline: { name: 'Incline barbell bench', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 155, big: true },
-    row: { name: 'Barbell row', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10, start: 135, big: true },
-    ohp: { name: 'Overhead press', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 85, big: true },
+    incline: { name: 'Incline barbell bench', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 190, big: true },
+    row: { name: 'Barbell row', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10, start: 165, big: true },
+    ohp: { name: 'Overhead press', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 110, big: true },
     pulldown: { name: 'Lat pulldown', kind: 'weight', group: 'upper', sets: 3, min: 10, max: 12 },
     fly: { name: 'Cable fly', kind: 'weight', group: 'upper', sets: 2, min: 12, max: 15 },
     lateralA: { name: 'Lateral raise', kind: 'weight', group: 'upper', sets: 2, min: 12, max: 15 },
     curl: { name: 'Cable curl', kind: 'weight', group: 'upper', sets: 2, min: 10, max: 12 },
     pushdown: { name: 'Triceps pushdown', kind: 'weight', group: 'upper', sets: 2, min: 10, max: 12 },
-    hack: { name: 'Hack squat', kind: 'weight', group: 'lower', sets: 3, min: 6, max: 8, start: 170, big: true },
+    hack: { name: 'Hack squat', kind: 'weight', group: 'lower', sets: 3, min: 6, max: 8, start: 210, big: true },
     rdl: { name: 'Romanian deadlift', kind: 'weight', group: 'lower', sets: 3, min: 8, max: 10, start: 135, big: true },
     lunge: { name: 'Walking lunge', kind: 'weight', group: 'lower', sets: 2, min: 10, max: 10, start: 0, inc: 5, perLeg: true },
     legcurl: { name: 'Seated leg curl', kind: 'weight', group: 'lower', sets: 3, min: 10, max: 12 },
@@ -97,6 +97,12 @@
     row: { name: 'Barbell row', w: 185, r: 7.5 },
     ohp: { name: 'Overhead press', w: 115, r: 8 }
   };
+  const STRENGTH_GOALS = {
+    incline: { feb: { w: 205, r: 8 }, jun: { w: 215, r: 8 } },
+    hack: { feb: { w: 235, r: 8 }, jun: { w: 245, r: 8 } },
+    row: { feb: { w: 185, r: 8 }, jun: { w: 195, r: 8 } },
+    ohp: { feb: { w: 120, r: 8 }, jun: { w: 125, r: 8 } }
+  };
   const e1rm = (w, r, left = 0) => w * (1 + (r + left) / 30);
 
   /* ---------- Starting state ---------- */
@@ -120,6 +126,9 @@
       days: {},
       food: {},
       foods: {},
+      extras: [],
+      garminSeen: {},
+      lastImport: null,
       checkins: [],
       checklist: {},
       drafts: {}
@@ -199,6 +208,10 @@
       if (!m) return;
       out.push({ id, w: Number(m[1]), d: Number(m[2]), log });
     });
+    (state.extras || []).forEach((x) => {
+      if (x.kind !== 'run') return;
+      out.push({ id: x.key, w: weekOf(x.date), d: dayIndex(x.date), extra: true, log: { type: 'run', date: x.date, distance: x.distance, seconds: x.seconds, hr: x.hr, talk: x.talk, hard: x.hard } });
+    });
     return out.sort((a, b) => a.w * 7 + a.d - (b.w * 7 + b.d));
   }
   function runStats(state, today) {
@@ -206,11 +219,12 @@
     const easy = [];
     let lastTalk = null;
     let longest = 0;
-    logs.forEach(({ w, d, log }) => {
-      const session = sessionFromLog(state, w, d, today);
+    logs.forEach(({ w, d, log, extra }) => {
+      const session = extra ? { run: { kind: 'distance' } } : sessionFromLog(state, w, d, today);
       const pace = runPaceFromLog(session, log);
       if (log.distance > longest) longest = log.distance;
       if (log.hard) return;
+      if (extra && today && diffDays(today, log.date) > 90) return;
       if (pace && log.talk === 'pass') easy.push(pace);
       if (log.talk) lastTalk = log.talk;
     });
@@ -512,7 +526,7 @@
 
         if (ex.kind === 'time') {
           const goal = st.load;
-          if (w < 2 || deload) { st.status = 'hold'; st.reason = deload ? 'Deload, so the goal holds.' : 'The first two weeks hold steady.'; return; }
+          if (w < 2 || deload) { st.status = 'hold'; st.reason = deload ? 'Deload, so the target holds.' : 'Automatic increases start in week 3.'; return; }
           if (reps.length >= need && reps.every((r) => r >= goal)) {
             st.load = Math.min(60, goal + 5);
             st.status = st.load > goal ? 'up' : 'hold';
@@ -523,24 +537,17 @@
 
         const base = top == null ? st.load : top;
         const known = st.load != null;
-        if (w < 0) {
-          // Logs before the plan starts go on the graphs but never move a set goal.
-          if (!known) st.load = base;
-          st.status = 'hold';
-          st.reason = 'Saved to your graphs. Plan goals start Monday, November 9.';
-          return;
-        }
         if (w < 2) {
-          // Weeks 1 and 2 stay deliberately light: never raise the goal, adopt a lower or first weight.
-          if (!known) st.load = base;
-          else if (base != null && base < st.load) st.load = base;
+          // Before week 3 the next target follows what you lifted, with no automatic increase.
+          if (base != null) st.load = base;
+          else if (!known) st.load = base;
           st.status = 'hold';
-          st.reason = 'The first two weeks hold steady on purpose.';
+          st.reason = 'Your next target matches what you lifted. Automatic increases start in week 3.';
           return;
         }
         if (deload) {
           st.status = 'hold';
-          st.reason = 'Deload, so the goal holds.';
+          st.reason = 'Deload, so the target holds.';
           return;
         }
         st.load = base;
@@ -813,6 +820,11 @@
       if (log.talk) talkLogged++;
       if (log.talk === 'fail') talkFails++;
     });
+    (state.extras || []).forEach((x) => {
+      if (x.kind !== 'run' || weekOf(x.date) !== w) return;
+      miles += x.distance;
+      if (x.distance > longest) longest = x.distance;
+    });
     const dates = Array.from({ length: 7 }, (_, i) => dateOf(w, i));
     const weights = dates.map((d) => state.days[d] && state.days[d].weight).filter((x) => x != null && x !== '').map(Number);
     const sleeps = dates.map((d) => state.days[d] && state.days[d].sleep).filter((x) => x != null && x !== '').map(Number);
@@ -846,6 +858,273 @@
     return Math.round(total * 10) / 10;
   }
 
+  /* ---------- Garmin activities CSV ---------- */
+  function parseCsv(text) {
+    const src = String(text).replace(/^﻿/, '');
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (quoted) {
+        if (c === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+        else if (c === '"') quoted = false;
+        else cell += c;
+      } else if (c === '"') quoted = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && src[i + 1] === '\n') i++;
+        row.push(cell);
+        cell = '';
+        if (row.some((x) => x.trim() !== '')) rows.push(row);
+        row = [];
+      } else cell += c;
+    }
+    row.push(cell);
+    if (row.some((x) => x.trim() !== '')) rows.push(row);
+    return rows;
+  }
+  const CSV_COLUMNS = {
+    type: ['activity type', 'type', 'sport'],
+    date: ['date', 'start time', 'begin timestamp', 'start date'],
+    title: ['title', 'activity name', 'name'],
+    distance: ['distance', 'distance (mi)', 'distance (miles)', 'distance (km)'],
+    time: ['time', 'duration', 'elapsed time', 'moving time', 'total time'],
+    hr: ['avg hr', 'average heart rate', 'avg heart rate', 'average hr', 'avg hr (bpm)']
+  };
+  function parseCsvDate(raw) {
+    const s = String(raw || '').trim();
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s);
+    const pad = (n) => String(n).padStart(2, '0');
+    if (m) return { date: `${m[1]}-${pad(m[2])}-${pad(m[3])}`, clock: m[4] ? `${pad(m[4])}:${m[5]}` : '' };
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})\s*([ap]m)?)?/i.exec(s);
+    if (m) {
+      const year = m[3].length === 2 ? `20${m[3]}` : m[3];
+      let hour = m[4] ? Number(m[4]) : null;
+      if (hour != null && m[6]) hour = (hour % 12) + (/p/i.test(m[6]) ? 12 : 0);
+      return { date: `${year}-${pad(m[1])}-${pad(m[2])}`, clock: hour == null ? '' : `${pad(hour)}:${m[5]}` };
+    }
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return null;
+    return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, clock: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+  }
+  function parseCsvDuration(raw) {
+    const s = String(raw || '').trim();
+    if (!/^\d+(:\d{1,2}){1,2}(\.\d+)?$/.test(s)) return null;
+    const parts = s.split(':').map(Number);
+    const secs = parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : parts[0] * 60 + parts[1];
+    return Math.round(secs);
+  }
+  function parseCsvNumber(raw) {
+    const s = String(raw == null ? '' : raw).replace(/,/g, '').trim();
+    if (!s || s === '--') return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  function classifyActivity(typeRaw) {
+    const t = String(typeRaw || '').toLowerCase();
+    if (/run/.test(t)) return { kind: 'run' };
+    if (/strength|weight|gym/.test(t)) return { kind: 'lift' };
+    if (/stair|floor climb/.test(t)) return { kind: 'cardio', machine: 'Stairmaster' };
+    if (/cycl|bike|biking|spin/.test(t)) return { kind: 'cardio', machine: 'Bike' };
+    if (/walk|hik/.test(t)) return { kind: 'walk' };
+    return { kind: 'other' };
+  }
+  function parseGarminCsv(text) {
+    const rows = parseCsv(text);
+    if (rows.length < 1) return { error: 'That file is empty.' };
+    const header = rows[0].map((h) => h.trim().toLowerCase());
+    const col = {};
+    Object.keys(CSV_COLUMNS).forEach((k) => {
+      col[k] = CSV_COLUMNS[k].map((name) => header.indexOf(name)).find((i) => i >= 0);
+    });
+    const missing = [];
+    if (col.date === undefined) missing.push('Date');
+    if (col.type === undefined) missing.push('Activity Type');
+    if (col.time === undefined) missing.push('Time');
+    if (missing.length) return { error: `This doesn't look like a Garmin activities export. It's missing the ${missing.join(', ')} column${missing.length === 1 ? '' : 's'}.`, columns: rows[0] };
+    const headerKm = col.distance !== undefined && /km/.test(header[col.distance]);
+    const activities = [];
+    let unreadable = 0;
+    rows.slice(1).forEach((r) => {
+      const when = parseCsvDate(r[col.date]);
+      const seconds = parseCsvDuration(r[col.time]);
+      if (!when || seconds == null) { unreadable++; return; }
+      const typeRaw = String(r[col.type] || '').trim();
+      const cls = classifyActivity(typeRaw);
+      const dist = col.distance === undefined ? null : parseCsvNumber(r[col.distance]);
+      activities.push({
+        key: `${when.date}|${when.clock}|${cls.kind}|${seconds}`,
+        date: when.date,
+        clock: when.clock,
+        typeRaw,
+        kind: cls.kind,
+        machine: cls.machine,
+        name: col.title === undefined ? typeRaw : String(r[col.title] || typeRaw).trim(),
+        distanceRaw: dist,
+        seconds,
+        hr: col.hr === undefined ? null : parseCsvNumber(r[col.hr])
+      });
+    });
+    activities.sort((a, b) => (a.date + a.clock < b.date + b.clock ? -1 : 1));
+    return { activities, unreadable, unit: headerKm ? 'km' : 'mi', total: rows.length - 1 };
+  }
+  /* Easy days usually stay under about 150 bpm for you. It's only a starting answer,
+     and you can change it on the review screen. */
+  const talkFromHr = (hr) => (hr == null ? null : hr <= 150 ? 'pass' : 'fail');
+  function finishedPlan(session, a, distance) {
+    const run = session.run;
+    if (!run) return true;
+    if (run.kind === 'distance') return distance >= run.miles * 0.85;
+    if (run.kind === 'minutes') return a.seconds >= run.minutes * 60 * 0.85;
+    return a.seconds >= session.minutes * 60 * 0.85;
+  }
+  function planGarminImport(state, activities, unit, today) {
+    const used = new Set();
+    const factor = unit === 'km' ? 0.621371 : 1;
+    const items = activities.map((a) => {
+      const distance = a.distanceRaw == null ? 0 : Math.round(a.distanceRaw * factor * 100) / 100;
+      const item = { activity: a, distance, status: 'other', sessionId: null, title: '', talk: null, completed: true, hard: false };
+      if (state.garminSeen && state.garminSeen[a.key]) { item.status = 'dup'; return item; }
+      if (a.date > today) { item.status = 'other'; return item; }
+      const w = weekOf(a.date);
+      if (w < -1) {
+        item.status = a.kind === 'run' && distance > 0 ? 'baseline' : 'other';
+        item.talk = talkFromHr(a.hr);
+        return item;
+      }
+      if (w > LAST_WEEK) return item;
+      const week = buildWeek(state, w, today);
+      if (a.kind === 'walk') {
+        const sunday = week.days[6];
+        if (w >= 0 && a.date === sunday.date && sunday.type === 'recovery' && a.seconds >= 600) {
+          item.status = 'walk';
+          item.sessionId = sunday.id;
+          item.title = 'Sunday walk';
+        }
+        return item;
+      }
+      if (a.kind === 'other') return item;
+      const sameDay = week.days.find((s) => s.date === a.date && s.type === a.kind);
+      if (sameDay && state.logs[sameDay.id] && state.logs[sameDay.id].source !== 'garmin') {
+        item.status = 'manual';
+        item.sessionId = sameDay.id;
+        item.title = sameDay.title;
+        return item;
+      }
+      const open = week.days
+        .filter((s) => s.type === a.kind && !state.logs[s.id] && !used.has(s.id))
+        .sort((x, y) => Math.abs(diffDays(x.date, a.date)) - Math.abs(diffDays(y.date, a.date)) || (x.date < y.date ? -1 : 1));
+      if (!open.length) {
+        if (a.kind === 'run' && distance > 0) {
+          item.status = 'extra';
+          item.title = 'Extra run';
+          item.talk = talkFromHr(a.hr);
+        }
+        return item;
+      }
+      const s = open[0];
+      used.add(s.id);
+      item.status = 'match';
+      item.sessionId = s.id;
+      item.title = s.title;
+      item.sessionDate = s.date;
+      if (a.kind !== 'lift') item.talk = talkFromHr(a.hr);
+      if (a.kind === 'run') {
+        item.completed = finishedPlan(s, a, distance);
+        item.hard = s.run.effort === 'test' || (s.run.effort === 'race' && s.run.miles > 20);
+      }
+      return item;
+    });
+    return items;
+  }
+  function applyGarminImport(state, items, today) {
+    const paceBefore = runStats(state, today);
+    const undo = { logIds: [], walkIds: [], extraKeys: [], seenKeys: [] };
+    const out = { runs: 0, cardio: 0, lifts: 0, walks: 0, extras: 0, baseline: 0, skipped: 0 };
+    const touchedWeeks = new Set();
+    state.extras = state.extras || [];
+    state.garminSeen = state.garminSeen || {};
+    items.forEach((it) => {
+      const a = it.activity;
+      if (it.status === 'dup') { out.skipped++; return; }
+      if (it.status === 'manual') { out.skipped++; }
+      state.garminSeen[a.key] = true;
+      undo.seenKeys.push(a.key);
+      if (it.status === 'match') {
+        touchedWeeks.add(weekOf(a.date));
+        undo.logIds.push(it.sessionId);
+        delete state.drafts[it.sessionId];
+        if (a.kind === 'run') {
+          state.logs[it.sessionId] = { type: 'run', date: a.date, distance: it.distance, seconds: a.seconds, hr: a.hr, talk: it.talk, completed: it.completed, hard: !!it.hard, source: 'garmin' };
+          out.runs++;
+        } else if (a.kind === 'cardio') {
+          state.logs[it.sessionId] = { type: 'cardio', date: a.date, machine: a.machine, minutes: Math.round(a.seconds / 60), talk: it.talk, hr: a.hr, source: 'garmin' };
+          out.cardio++;
+        } else {
+          state.logs[it.sessionId] = { type: 'lift', date: a.date, exercises: {}, minutes: Math.round(a.seconds / 60), hr: a.hr, source: 'garmin' };
+          out.lifts++;
+        }
+      } else if (it.status === 'walk') {
+        const log = state.logs[it.sessionId] || { type: 'recovery', items: {} };
+        log.items = log.items || {};
+        if (!log.items.walk) { log.items.walk = true; undo.walkIds.push(it.sessionId); }
+        state.logs[it.sessionId] = log;
+        out.walks++;
+      } else if (it.status === 'extra' || it.status === 'baseline') {
+        state.extras.push({ key: a.key, date: a.date, kind: 'run', name: a.name, distance: it.distance, seconds: a.seconds, hr: a.hr, talk: it.talk, hard: !!it.hard });
+        undo.extraKeys.push(a.key);
+        if (it.status === 'extra') { out.extras++; touchedWeeks.add(weekOf(a.date)); }
+        else out.baseline++;
+      }
+    });
+    state.lastImport = undo;
+    const paceAfter = runStats(state, today);
+    const notes = [];
+    const holds = items.some((it) => {
+      if (it.status !== 'match' || it.activity.kind !== 'run') return false;
+      const w = weekOf(it.activity.date);
+      return w >= 0 && w !== FINALS_WEEK && w !== TRAVEL_WEEK && (it.talk === 'fail' || it.completed === false);
+    });
+    if (holds) notes.push('A run came in unfinished or above the talk test, so your running holds at this step before moving on. If that\'s wrong, open the run on the Train tab and change your answer.');
+    touchedWeeks.forEach((w) => {
+      if (w < 0) return;
+      const s = weekSummary(state, w, today);
+      const plan = plannedMiles(state, w, today);
+      if (s.miles > plan * 1.25 && s.miles - plan >= 2) notes.push(`Week ${w + 1} came in at ${s.miles} miles against ${plan} planned. Your mileage plan stays the same, so try not to stack extra miles on top of it.`);
+    });
+    out.paceBefore = paceBefore;
+    out.paceAfter = paceAfter;
+    out.notes = notes;
+    return out;
+  }
+  function undoGarminImport(state) {
+    const u = state.lastImport;
+    if (!u) return false;
+    u.logIds.forEach((id) => { delete state.logs[id]; });
+    u.walkIds.forEach((id) => { if (state.logs[id] && state.logs[id].items) state.logs[id].items.walk = false; });
+    state.extras = (state.extras || []).filter((x) => !u.extraKeys.includes(x.key));
+    u.seenKeys.forEach((k) => { delete state.garminSeen[k]; });
+    state.lastImport = null;
+    return true;
+  }
+  /* Running history from before the plan, summed over the last 8 weeks before it starts. */
+  function garminBaseline(state) {
+    const from = addDays(START, -56);
+    const runs = (state.extras || []).filter((x) => x.kind === 'run' && x.date < START && x.date >= from);
+    runLogs(state).forEach(({ log, extra, w }) => { if (!extra && w < 0 && log.distance) runs.push({ distance: log.distance, seconds: log.seconds, date: log.date }); });
+    if (!runs.length) return null;
+    const miles = runs.reduce((acc, r) => acc + r.distance, 0);
+    const seconds = runs.reduce((acc, r) => acc + r.seconds, 0);
+    return {
+      count: runs.length,
+      weeklyMiles: Math.round((miles / 8) * 10) / 10,
+      longest: Math.max(...runs.map((r) => r.distance)),
+      avgPace: seconds / miles
+    };
+  }
+
   /* ---------- Check-in timing ---------- */
   const checkinDate = (w) => dateOf(w, 6);
   const waistDue = (w) => w % 2 === 0;
@@ -865,6 +1144,7 @@
   }
   function checkinInstructions(state, w) {
     const steps = [
+      { title: 'Import your Garmin activities', text: 'Export your activities CSV from the Garmin Connect website, then tap Import Garmin CSV at the top of the check-in. This fills in your runs and cardio.' },
       { title: 'Check your average weight', text: 'The app averages your Monday, Wednesday, and Friday morning weigh-ins. Fix anything that looks off.' }
     ];
     if (waistDue(w)) steps.push({ title: 'Measure your waist', text: 'Before breakfast, in centimeters, at the same spot as last time, after a normal breath out.' });
@@ -1049,9 +1329,9 @@
 
   /* ---------- Checkpoints ---------- */
   const CHECKPOINTS = [
-    { date: '2027-02-07', weight: [195, 198], waist: [88, 90], run: 'Run 3 miles without stopping. Under 9:00 per mile is the stretch goal.', strength: 'Within 10% of your current bests' },
-    { date: '2027-05-02', weight: [186, 191], waist: [84, 87], run: 'Finish the Motor City Half on April 25 at an easy effort.', strength: 'Within 10% of your current bests' },
-    { date: '2027-10-17', weight: [180, 188], waist: null, run: 'Finish healthy first, then under 4:00, with 3:30 as the stretch goal.', strength: 'Within 15% during peak mileage' }
+    { date: '2027-02-07', weight: [195, 198], waist: [88, 90], run: 'Run 3 miles without stopping. Under 9:00 per mile is the stretch goal.', strength: 'Match or beat your current best sets' },
+    { date: '2027-05-02', weight: [186, 191], waist: [84, 87], run: 'Finish the Motor City Half on April 25 at an easy effort.', strength: 'Keep climbing toward your June 13 lift goals' },
+    { date: '2027-10-17', weight: [180, 188], waist: null, run: 'Finish healthy first, then under 4:00, with 3:30 as the stretch goal.', strength: 'Hold your June lift numbers within about 5%' }
   ];
   const nextCheckpoint = (today) => CHECKPOINTS.find((c) => c.date >= today) || CHECKPOINTS[CHECKPOINTS.length - 1];
 
@@ -1081,10 +1361,10 @@
   }
 
   return {
-    START, RACE, HALF, LAST_WEEK, TRAVEL_WEEK, FINALS_WEEK, EX, LIFTS, STRENGTH_BESTS, DAY_NAMES, DAY_SHORT, CHECKPOINTS, CALORIE_FLOOR,
+    START, RACE, HALF, LAST_WEEK, TRAVEL_WEEK, FINALS_WEEK, EX, LIFTS, STRENGTH_BESTS, STRENGTH_GOALS, DAY_NAMES, DAY_SHORT, CHECKPOINTS, CALORIE_FLOOR,
     addDays, diffDays, fmtDate, dayIndex, weekOf, weekStart, dateOf, fmtPace, fmtDur, fmtTime, e1rm, increment,
     initialState, phaseOf, buildWeek, liftState, macros, mealPlan, trackingToday, longRunFuel, readiness, backOff,
-    loadText, liftChanges, foodTotals, rangeStatus, scaleFood, caloriesFromMacros, exerciseHistory, weekSummary, plannedMiles, checkinDate, waistDue, dueCheckin, nextCheckinWeek, checkinInstructions, evaluateCheckin,
+    parseCsv, parseGarminCsv, planGarminImport, applyGarminImport, undoGarminImport, garminBaseline, loadText, liftChanges, foodTotals, rangeStatus, scaleFood, caloriesFromMacros, exerciseHistory, weekSummary, plannedMiles, checkinDate, waistDue, dueCheckin, nextCheckinWeek, checkinInstructions, evaluateCheckin,
     buildCheckinRecord, checkinSummaryText, nextCheckpoint, runStats, runShift, countsAsPlanned, buildIcs, isScheduledDeload, MARATHON_TIERS
   };
 });

@@ -91,6 +91,7 @@
     return `<button class="chip ${String(value) === String(v) ? 'on' : ''}" data-action="chip" data-group="${group}" data-v="${esc(v)}" aria-pressed="${String(value) === String(v)}">${esc(l)}</button>`;
   }).join('')}</div>`;
   const field = (attrs, unit, val, placeholder, disabled) => `<label class="field"><input type="text" ${/inputmode/.test(attrs) ? '' : 'inputmode="decimal"'} autocomplete="off" ${attrs} value="${val == null ? '' : esc(val)}" placeholder="${esc(placeholder || '')}" ${disabled ? 'disabled' : ''}>${unit ? `<span class="u">${esc(unit)}</span>` : ''}</label>`;
+  const garminUpload = (cls) => `<label class="btn ${cls || 'alt'}">Import Garmin CSV<input type="file" accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel" class="vh" data-action-change="garmin-csv" aria-label="Choose your Garmin activities CSV"></label>`;
   const checkRow = (id, title, sub, on, action) => `<button class="check ${on ? 'on' : ''}" data-action="${action}" data-id="${esc(id)}" aria-pressed="${!!on}"><span class="box">${I.check}</span><span class="ct"><b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</span></button>`;
 
   /* ---------- Shared numbers ---------- */
@@ -190,7 +191,7 @@
 
     // Key numbers
     const ls = E.liftState(state);
-    html += `<h3 class="sec-title">Goal weights</h3><div class="tiles">
+    html += `<h3 class="sec-title">Next session targets</h3><div class="tiles">
       ${['incline', 'hack', 'row', 'ohp'].map((id) => `<button class="tile" data-action="go-train-lift" data-id="${id}"><div class="v">${ls[id].load}<small> lb</small></div><div class="l">${esc(E.STRENGTH_BESTS[id].name)}</div></button>`).join('')}
     </div>`;
 
@@ -271,12 +272,14 @@
     const deload = wk.deload || wk.travel;
     const logged = !!state.logs[s.id];
     let html = '';
-    if (wk.pre) html += notice('', 'Before your plan starts', 'Log whatever you lift this week, using your real weights. It goes on your graphs, and your plan\'s starting goals stay the same.');
+    if (wk.pre) html += notice('', 'Before your plan starts', 'Log whatever you lift this week, using your real weights. It goes on your graphs and sets your next target.');
     else if (wk.finals) html += notice('', 'Finals deload', 'Do 2 sets per exercise, keep the same weights, and stop with at least 3 reps left.');
     else if (wk.travel) html += notice('', 'Travel session', 'Use whatever equipment is there. Keep it simple and enjoy the trip.');
     else if (wk.deload) html += notice('', 'Deload week', 'Do 2 sets per exercise, keep the same weights, and stop with at least 3 reps left.');
-    else if (s.w < 2) html += notice('', 'Keep this deliberately easy', 'Use these loads even if they feel light, and stop each set with about 3 reps left.');
+    else if (s.w < 2) html += notice('', 'Ease back in', 'These targets sit just under your recent numbers. Stop each set with about 3 reps left. Automatic increases start in week 3, and if a weight is off, log what you used and the next target follows it.');
     if (s.subtitle && s.subtitle === 'Light session') html += notice('', 'Light session', 'Do 2 sets per exercise and stop with at least 3 reps left.');
+    const glog = state.logs[s.id];
+    if (glog && glog.source === 'garmin' && !Object.keys(glog.exercises || {}).length) html += notice('good', 'Counted from Garmin', `${glog.minutes ? `${glog.minutes} minutes` : 'Session'}${glog.hr ? `, average ${Math.round(glog.hr)} bpm` : ''}. Garmin doesn't give me reliable sets, so add your weights and reps below to update your targets and graphs.`);
     html += `<p class="tiny" style="margin:0 2px 10px">Warm up with 5 minutes on the bike, then 2 lighter sets of the first exercise. Rest 2-3 minutes on the first two exercises, then 60-90 seconds on the rest. Leave a weight blank to use the one shown.</p>`;
     E.LIFTS[s.lift].list.forEach((id, idx) => {
       const ex = E.EX[id];
@@ -287,7 +290,7 @@
       const rangeText = ex.kind === 'time' ? `${nSets} x ${ex.min}-${ex.max} sec` : `${nSets} x ${ex.min === ex.max ? ex.min : `${ex.min}-${ex.max}`}${ex.perLeg ? ' per leg' : ''}`;
       const statusCls = logged && st.status === 'up' ? 'up' : logged && st.status === 'down' ? 'down' : '';
       html += `<div class="ex"><div class="ex-top"><div><div class="ex-name">${esc(ex.name)}</div><div class="ex-pres">${rangeText}${idx < 2 ? ', rest 2-3 min' : ''}</div>${st.load == null ? '<div class="ex-pres">Pick a weight that leaves about 3 reps.</div>' : ''}</div>
-        <div class="ex-goal ${statusCls}">${esc(goalLoadText(ex, st))}<small>${logged ? 'next goal' : 'goal'}</small></div></div>`;
+        <div class="ex-goal ${statusCls}">${esc(goalLoadText(ex, st))}<small>${logged ? 'next target' : 'target'}</small></div></div>`;
       html += '<div class="sets">';
       for (let i = 0; i < nSets; i++) {
         const set = entry.sets[i] || {};
@@ -344,6 +347,7 @@
     if (fuel && state.targets.mode !== 'portions') html += `<p class="tiny" style="margin:0 2px 12px">${esc(fuel)}</p>`;
     if (!canLog(s)) return html;
     const logged = state.logs[s.id];
+    if (logged && logged.source === 'garmin') html += notice('good', 'Imported from Garmin', `${logged.hr ? `Average ${Math.round(logged.hr)} bpm. ` : ''}Change anything below if it looks wrong.`);
     html += `<div class="block"><div class="formgrid">
       <div class="wide"><span class="lbl">Distance from your Garmin</span>${field('data-run="distance"', 'mi', d.distance, run.miles ? String(run.miles) : '')}</div>
       <div><span class="lbl">Minutes</span>${field('data-run="min" inputmode="numeric"', 'min', d.min, '')}</div>
@@ -665,6 +669,9 @@
     html += `<h3 class="sec-title">Waist</h3><div class="block">${lineChart('wa', waistPts, { aria: 'Waist measurement', empty: 'You measure this every other Sunday. You started at 93 cm.', h: 120, band: cp.waist || undefined, seriesName: 'Waist', bandName: `${E.fmtDate(cp.date)} goal` })}</div>`;
 
     html += `<h3 class="sec-title">Running</h3><div class="block">${milesChart()}</div>`;
+    const baseline = E.garminBaseline(state);
+    if (baseline) html += `<div class="block flat"><div class="kpi"><span class="kl"><span class="kname">Your running before the plan</span><br><span class="ksub">Last 8 weeks: ${baseline.count} run${baseline.count === 1 ? '' : 's'}, longest ${Math.round(baseline.longest * 10) / 10} mi, average pace ${E.fmtPace(baseline.avgPace)}</span></span><span class="kv">${baseline.weeklyMiles}<small>mi/wk</small></span></div></div>`;
+    html += `<div style="margin-bottom:12px">${garminUpload()}</div>`;
     const pred = stats.prediction;
     html += `<div class="block flat">
       <div class="kpi"><span class="kl"><span class="kname">Easy pace goal</span><br><span class="ksub">${stats.logged ? 'Learned from your last 3 easy runs' : 'Starts from your 10:00 test mile'}</span></span><span class="kv">${E.fmtPace(stats.easyLo)}<small>to ${E.fmtPace(stats.easyHi)}</small></span></div>
@@ -674,14 +681,22 @@
     </div>`;
 
     html += `<h3 class="sec-title">Lifting progress</h3><div class="block"><label class="lbl" for="lift-select">Exercise</label>${liftSelect()}<div style="margin-top:12px">${liftChartHtml(ui.liftChart, 'p')}</div></div>`;
-    html += `<h3 class="sec-title">Main lifts</h3><div class="block"><div class="mult">${Object.keys(E.STRENGTH_BESTS).map((id) => {
+    html += `<h3 class="sec-title">Strength goals</h3><div class="block">${Object.keys(E.STRENGTH_GOALS).map((id) => {
       const best = E.STRENGTH_BESTS[id];
-      const base = E.e1rm(best.w, best.r);
-      const h = ls[id].history;
-      const peak = h.length ? Math.max(...h.map((x) => x.e1rm)) : null;
-      const pct = peak ? Math.round((peak / base) * 100) : null;
-      return `<div><h4>${esc(best.name)}</h4><div class="mv">${ls[id].load}<small>lb goal</small></div><div class="tiny">${pct ? `Strength at ${pct}% of your best` : `Best going in: ${best.w} x ${best.r}`}</div></div>`;
-    }).join('')}</div></div>`;
+      const goal = E.STRENGTH_GOALS[id];
+      let bestSet = { w: best.w, r: best.r };
+      let bestE = E.e1rm(best.w, best.r);
+      E.exerciseHistory(state, id).rows.forEach((row) => row.sets.forEach((s) => {
+        const value = E.e1rm(Number(s.w) || 0, s.r);
+        if (value > bestE) { bestE = value; bestSet = s; }
+      }));
+      const startE = E.e1rm(best.w, best.r);
+      const goalE = E.e1rm(goal.jun.w, goal.jun.r);
+      const pct = Math.max(0, Math.min(100, ((bestE - startE) / (goalE - startE)) * 100));
+      return `<div class="macro"><div class="macro-top"><b>${esc(best.name)}</b><span>${bestSet.w} x ${bestSet.r === 7.5 ? '7-8' : bestSet.r}</span></div>
+        <div class="bar"><i style="width:${pct}%;background:var(--good)"></i></div>
+        <div class="macro-note">Feb 7 goal ${goal.feb.w} x ${goal.feb.r}, Jun 13 goal ${goal.jun.w} x ${goal.jun.r}, then hold through race day</div></div>`;
+    }).join('')}<p class="tiny" style="margin-top:12px">The number on the right is your best set so far. The bar shows your progress toward June.</p></div>`;
 
     html += `<h3 class="sec-title">Check-ins</h3>`;
     if (!cis.length) html += `<div class="block muted small">Your first check-in is Sunday, November 15 at ${E.fmtTime(state.checkinTime)}.</div>`;
@@ -726,6 +741,8 @@
     const inner = `
       <p class="muted" style="margin:-4px 2px 12px">Week ${week + 1}, ending ${E.fmtDate(E.checkinDate(week))}</p>
       ${travel ? notice('', 'Travel week', 'Nothing changes this week. A quick check on how you feel is all this needs.') : ''}
+      ${garminUpload()}
+      <p class="tiny" style="margin:6px 2px 0">Optional. Do this first, because anything you've typed below will reset when the import finishes.</p>
       <h3 class="sec-title">What the app counted</h3>
       <div class="block"><div class="autostat">
         <div><b>${s.done}/${s.planned}</b><span>Sessions</span></div>
@@ -762,7 +779,7 @@
     if (rec.changes.length) html += `<div class="block">${rec.changes.map((c) => `<div class="change"><b>${esc(c.title)}</b><span>${esc(c.detail)}</span></div>`).join('')}</div>`;
     rec.notes.forEach((n) => { html += notice('', rec.changes.length ? 'Also' : 'Targets', n); });
     if (rec.liftChanges && rec.liftChanges.length) {
-      html += `<h3 class="sec-title">Goal weights changed this week</h3><div class="block">${rec.liftChanges.map((l) => `<div class="bump"><span>${esc(l.name)}</span><b class="${l.up ? 'up' : 'down'}">${esc(l.from)} to ${esc(l.to)}</b></div>`).join('')}</div>`;
+      html += `<h3 class="sec-title">Lift targets changed this week</h3><div class="block">${rec.liftChanges.map((l) => `<div class="bump"><span>${esc(l.name)}</span><b class="${l.up ? 'up' : 'down'}">${esc(l.from)} to ${esc(l.to)}</b></div>`).join('')}</div>`;
     }
     if (rec.easyPace) html += `<div class="block flat"><div class="kpi"><span class="kname">Easy pace goal</span><span class="kv">${esc(rec.easyPace)}</span></div></div>`;
     return html;
@@ -872,6 +889,90 @@
     render();
   }
 
+  function loadGarminFile(file) {
+    file.text().then((txt) => {
+      const parsed = E.parseGarminCsv(txt);
+      if (parsed.error) {
+        ui.garmin = { error: parsed.error, columns: parsed.columns };
+      } else {
+        ui.garmin = { parsed, unit: parsed.unit, items: E.planGarminImport(state, parsed.activities, parsed.unit, today()), error: null, applyError: null };
+      }
+      ui.sheet = 'garmin';
+      renderSheet();
+      const sheet = $('.sheet');
+      if (sheet) sheet.scrollTop = 0;
+    }).catch(() => {
+      ui.garmin = { error: 'That file couldn\'t be read. Choose the CSV you exported from Garmin Connect.' };
+      ui.sheet = 'garmin';
+      renderSheet();
+    });
+  }
+  function sheetGarmin() {
+    const g = ui.garmin;
+    if (g.error) {
+      return sheetShell('Garmin import', `${notice('crit', 'That file didn\'t import', g.error)}
+        <div class="block small muted">On the Garmin Connect website, open Activities, scroll until the dates you want are loaded, then click Export CSV. Nothing in the app changed.</div>
+        ${g.columns ? `<details class="more"><summary>Columns in your file</summary><div class="inner small muted">${esc(g.columns.join(', '))}</div></details>` : ''}
+        ${garminUpload()}<button class="btn alt" style="margin-top:9px" data-action="close-sheet">Close</button>`);
+    }
+    const items = g.items;
+    const count = (st) => items.filter((x) => x.status === st).length;
+    const matched = count('match');
+    const extras = count('extra');
+    const baseline = items.filter((x) => x.status === 'baseline');
+    const dups = count('dup');
+    const manual = count('manual');
+    const walks = count('walk');
+    const other = count('other');
+    const usable = matched + extras + baseline.length + walks;
+    const nameDay = (d) => `${E.DAY_SHORT[E.dayIndex(d)]}, ${E.fmtDate(d)}`;
+    const detail = (x) => {
+      const a = x.activity;
+      const parts = [];
+      if (x.distance) parts.push(`${x.distance} mi`);
+      parts.push(E.fmtDur(a.seconds));
+      if (a.hr) parts.push(`${Math.round(a.hr)} bpm`);
+      return parts.join(', ');
+    };
+    const cards = items.map((x, i) => {
+      if (x.status !== 'match' && x.status !== 'extra') return '';
+      const a = x.activity;
+      const moved = x.sessionDate && x.sessionDate !== a.date;
+      let html = `<div class="gi"><div class="gi-top"><div><b>${esc(nameDay(a.date))}: ${esc(a.typeRaw || a.name)}</b><span>${esc(detail(x))}</span></div></div>
+        <div class="gi-to">${x.status === 'extra' ? 'Counts toward your miles as an extra run' : `Fills ${esc(x.title)}${moved ? `, planned for ${esc(nameDay(x.sessionDate))}` : ''}`}</div>`;
+      if (a.kind !== 'lift') {
+        const pre = E.weekOf(a.date) < 0;
+        const facts = [x.talk === 'pass' ? 'Talk test passed' : x.talk === 'fail' ? 'Talk test missed' : 'Talk test needed'];
+        if (a.kind === 'run' && x.status === 'match' && !pre) facts.push(x.completed ? 'finished' : 'not finished');
+        if (a.kind === 'run' && x.hard) facts.push('hard effort');
+        const attention = x.open || !x.talk || (!pre && (x.talk === 'fail' || (a.kind === 'run' && x.status === 'match' && !x.completed)));
+        html += `<div class="gi-facts">${esc(facts.join(', '))}${a.hr ? ', estimated from your heart rate' : ''}</div>`;
+        html += `<details class="numbers" ${attention ? 'open' : ''}><summary>${attention ? 'Check this' : 'Change'}</summary>`;
+        html += `<div class="q"><span class="lbl">Could you speak in full sentences throughout?</span>${chips(`gi:${i}:talk`, [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], x.talk || '', 'even')}</div>`;
+        if (a.kind === 'run' && x.status === 'match' && !pre) html += `<div class="q"><span class="lbl">Did you finish the session?</span>${chips(`gi:${i}:completed`, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], x.completed ? 'yes' : 'no', 'even')}</div>`;
+        if (a.kind === 'run') html += `<div class="q" style="margin-bottom:0"><span class="lbl">Was this a hard, all-out effort?</span>${chips(`gi:${i}:hard`, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], x.hard ? 'yes' : 'no', 'even')}</div>`;
+        html += '</details>';
+      }
+      return `${html}</div>`;
+    }).join('');
+    const baseMiles = baseline.reduce((acc, x) => acc + x.distance, 0);
+    const inner = `<div class="block"><div class="autostat">
+        <div><b>${matched}</b><span>Sessions to fill</span></div>
+        <div><b>${extras + baseline.length}</b><span>Extra or past runs</span></div>
+        <div><b>${dups + manual}</b><span>Already logged</span></div>
+      </div>
+      <div class="q" style="margin:12px 0 0"><span class="lbl">Distance in this file is in</span>${chips('gi-unit', [{ v: 'mi', l: 'Miles' }, { v: 'km', l: 'Kilometers' }], g.unit, 'even')}</div></div>
+      ${baseline.length ? notice('', 'Your running history', `${baseline.length} runs and ${Math.round(baseMiles)} miles from before this week. These set your starting pace and your baseline.`) : ''}
+      ${g.parsed.unreadable ? notice('warn', `${g.parsed.unreadable} row${g.parsed.unreadable === 1 ? '' : 's'} couldn't be read`, 'Those rows will be skipped. Everything else below is fine.') : ''}
+      ${cards}
+      ${walks ? `<p class="tiny" style="margin:0 2px 10px">${walks} Sunday walk${walks === 1 ? '' : 's'} will be checked off.</p>` : ''}
+      ${other ? `<p class="tiny" style="margin:0 2px 10px">${other} other activit${other === 1 ? 'y' : 'ies'}, like golf or older gym sessions, won't change your plan.</p>` : ''}
+      ${g.applyError ? `<p class="err">${esc(g.applyError)}</p>` : ''}
+      ${usable ? `<button class="btn" data-action="garmin-apply">Import ${usable} activit${usable === 1 ? 'y' : 'ies'}</button>` : notice('', 'Nothing new to import', 'Everything in this file is already in the app or doesn\'t affect your plan.')}
+      <button class="btn alt" style="margin-top:9px" data-action="close-sheet">${usable ? 'Cancel' : 'Close'}</button>`;
+    return sheetShell('Review your import', inner);
+  }
+
   function sheetSettings() {
     const tg = state.targets;
     const timeRow = (i, label) => `<div class="kpi" style="padding:9px 0"><span class="kname">${label}</span><input class="inp" style="width:136px" type="time" data-time="${i}" value="${state.times[i] || ''}" aria-label="${label} time"></div>`;
@@ -888,7 +989,9 @@
       <h3 class="sec-title">Your data</h3><div class="block">
         <p class="muted small" style="margin-bottom:12px">Your logs stay on this phone, not on GitHub. Export a backup every few weeks so you can restore them if you ever reinstall.</p>
         <button class="btn alt" data-action="export-backup">Export backup</button>
-        <label class="btn alt" style="margin-top:9px">Restore from backup<input type="file" accept="application/json,.json" class="hide" data-action-change="import-backup"></label>
+        <label class="btn alt" style="margin-top:9px">Restore from backup<input type="file" accept="application/json,.json" class="vh" data-action-change="import-backup"></label>
+        <div style="margin-top:9px">${garminUpload()}</div>
+        ${state.lastImport ? `<button class="btn ${ui.confirmUndoGarmin ? 'danger' : 'alt'}" style="margin-top:9px" data-action="undo-garmin">${ui.confirmUndoGarmin ? 'Tap again to undo the import' : 'Undo last Garmin import'}</button>` : ''}
         ${ui.importError ? `<p class="err">${esc(ui.importError)}</p>` : ''}
       </div>
       ${last ? `<h3 class="sec-title">Latest check-in</h3><div class="block"><p class="muted small" style="margin-bottom:10px">Week ${last.week + 1}. Undoing restores the targets you had before it. Lift goals and pace are not affected.</p><button class="btn ${ui.confirmUndo ? 'danger' : 'alt'}" data-action="undo-checkin">${ui.confirmUndo ? 'Tap again to undo' : 'Undo this check-in'}</button></div>` : ''}
@@ -930,6 +1033,7 @@
     else if (name === 'history') html = sheetHistory();
     else if (name === 'summary') html = sheetSummary();
     else if (name === 'food') html = sheetFood();
+    else if (name === 'garmin') html = sheetGarmin();
     else if (name === 'liftchart') html = sheetLiftChart();
     host.innerHTML = html;
     host.dataset.name = name || '';
@@ -996,7 +1100,7 @@
         lines.push({ name: spec.name, value: `${fmt(b)} to ${fmt(a)}`, cls: a.status === 'down' ? 'down' : a.status === 'up' ? 'up' : '' });
       }
     });
-    ui.summary = { title: 'Workout saved', lines, note: w < 0 ? 'Saved to your graphs. Your plan\'s goals begin on Monday, November 9.' : lines.length ? 'Your goal weights updated for next time.' : (w < 2 ? 'Your first two weeks hold steady on purpose, so goals stay put.' : 'No goal changes yet. Keep the weight until every set reaches the top of its range with about 2 reps left.') };
+    ui.summary = { title: 'Workout saved', lines, note: lines.length ? 'Your targets updated for next time.' : (w < 2 ? 'Your next targets match what you lifted. Automatic increases start in week 3.' : 'No target changes yet. Keep the weight until every set reaches the top of its range with about 2 reps left.') };
     ui.sheet = 'summary';
     render();
   }
@@ -1101,7 +1205,7 @@
     else if (a === 'sched-week') { ui.schedWeek = Math.max(0, clampWeek(ui.schedWeek + Number(el.dataset.d))); render(); }
     else if (a === 'scroll-checkin') { const c = $('#checkin-card'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     else if (a === 'open-session') { ui.tab = 'train'; ui.trainWeek = Number(el.dataset.w); ui.trainDay = Number(el.dataset.d); ui.error = null; render(); }
-    else if (a === 'open-settings') { ui.sheet = 'settings'; ui.confirmReset = false; ui.confirmUndo = false; ui.importError = null; renderSheet(); }
+    else if (a === 'open-settings') { ui.sheet = 'settings'; ui.confirmReset = false; ui.confirmUndo = false; ui.confirmUndoGarmin = false; ui.importError = null; renderSheet(); }
     else if (a === 'open-morning') { ui.sheet = 'morning'; ui.logDate = today(); renderSheet(); }
     else if (a === 'log-date') {
       const n = E.addDays(ui.logDate, Number(el.dataset.d));
@@ -1187,6 +1291,40 @@
         ui.foodDraft = { name: f.name, amount: f.amount, unit: f.unit, cal: f.cal, p: f.p, c: f.c, f: f.f, base: { amount: f.amount, unit: f.unit, cal: f.cal, p: f.p, c: f.c, f: f.f }, id: null, error: null };
         renderSheet();
       }
+    } else if (a === 'garmin-apply') {
+      const unanswered = ui.garmin.items.findIndex((x) => (x.status === 'match' || x.status === 'extra') && x.activity.kind !== 'lift' && !x.talk);
+      if (unanswered >= 0) {
+        ui.garmin.applyError = 'Some sessions have no heart rate. Answer their talk test question first.';
+        renderSheet();
+        return;
+      }
+      const result = E.applyGarminImport(state, ui.garmin.items, today());
+      save();
+      const lines = [];
+      if (result.runs) lines.push({ name: 'Runs filled', value: String(result.runs) });
+      if (result.cardio) lines.push({ name: 'Cardio filled', value: String(result.cardio) });
+      if (result.lifts) lines.push({ name: 'Lift sessions counted', value: String(result.lifts) });
+      if (result.extras) lines.push({ name: 'Extra runs added', value: String(result.extras) });
+      if (result.baseline) lines.push({ name: 'Past runs added', value: String(result.baseline) });
+      const nowPace = `${E.fmtPace(result.paceAfter.easyLo)} to ${E.fmtPace(result.paceAfter.easyHi)}`;
+      lines.push({ name: 'Easy pace goal', value: nowPace, cls: result.paceAfter.center < result.paceBefore.center ? 'up' : '' });
+      if (result.paceAfter.prediction) lines.push({ name: 'Marathon estimate', value: E.fmtDur(result.paceAfter.prediction.marathon) });
+      const sum = E.weekSummary(state, nowWeek(), today());
+      lines.push({ name: 'Miles this week', value: `${sum.miles}` });
+      const noteParts = result.notes.slice();
+      if (result.lifts) noteParts.push("Garmin doesn't give me reliable sets, so add your weights and reps on the Train tab to update your lift targets and graphs.");
+      ui.summary = { title: 'Garmin import finished', lines, note: noteParts.join(' ') || 'Your run goals and weekly totals are updated.' };
+      ui.garmin = null;
+      ui.ci = null;
+      ui.sheet = 'summary';
+      render();
+    } else if (a === 'undo-garmin') {
+      if (!ui.confirmUndoGarmin) { ui.confirmUndoGarmin = true; renderSheet(); return; }
+      E.undoGarminImport(state);
+      save();
+      ui.confirmUndoGarmin = false;
+      toast('Import undone');
+      render();
     } else if (a === 'food-save') saveFood();
     else if (a === 'food-delete') {
       const day = foodDay(ui.fuelDate);
@@ -1235,6 +1373,23 @@
   });
 
   function handleChip(group, v) {
+    if (group === 'gi-unit') {
+      ui.garmin.unit = v;
+      ui.garmin.items = E.planGarminImport(state, ui.garmin.parsed.activities, v, today());
+      renderSheet();
+      return;
+    }
+    if (group.startsWith('gi:')) {
+      const [, idx, field2] = group.split(':');
+      const item = ui.garmin.items[Number(idx)];
+      item.open = true;
+      if (field2 === 'talk') item.talk = v;
+      if (field2 === 'completed') item.completed = v === 'yes';
+      if (field2 === 'hard') item.hard = v === 'yes';
+      ui.garmin.applyError = null;
+      renderSheet();
+      return;
+    }
     if (group.startsWith('left:')) {
       const s = currentTrainSession();
       const ex = group.split(':')[1];
@@ -1355,6 +1510,10 @@
   document.addEventListener('change', (ev) => {
     const el = ev.target;
     if (el.dataset.liftSelect) { ui.liftChart = el.value; render(); return; }
+    if (el.dataset.actionChange === 'garmin-csv' && el.files && el.files[0]) {
+      loadGarminFile(el.files[0]);
+      return;
+    }
     if (el.dataset.actionChange === 'import-backup' && el.files && el.files[0]) {
       el.files[0].text().then((txt) => {
         const parsed = JSON.parse(txt);
