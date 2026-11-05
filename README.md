@@ -4,10 +4,10 @@ An offline iPhone app for marathon, lifting, nutrition, and recovery tracking. I
 
 ## Put it online
 
-1. Create a new **public** repository on GitHub, for example `detroit-262`. GitHub Pages needs a public repository on a free account.
-2. Choose **Add file > Upload files**, then drag in everything from this folder, including the `fonts` and `icons` folders. Commit the files.
+1. Create a new **public** repository on GitHub, for example `Detroit-26.2`. GitHub Pages needs a public repository on a free account.
+2. Choose **Add file > Upload files**, then drag in every file from this folder. Commit the files.
 3. Go to **Settings > Pages**. Under **Build and deployment**, set **Source** to **Deploy from a branch**, choose `main` and `/ (root)`, then select **Save**.
-4. Wait a minute or two. Your app will be at `https://YOUR-USERNAME.github.io/detroit-262/`.
+4. Wait a minute or two. Your app will be at `https://YOUR-USERNAME.github.io/Detroit-26.2/`.
 
 ## Add it to your iPhone
 
@@ -39,5 +39,5 @@ Upload the changed file to the same repository. Your phone picks it up the next 
 - `index.html`, `styles.css`: the page and its look
 - `engine.js`: the training plan and every update rule
 - `app.js`: the screens and logging
-- `sw.js`, `manifest.webmanifest`, `icons`: offline use and the Home Screen install
-- `fonts`: Barlow and Barlow Condensed, under the SIL Open Font License
+- `sw.js`, `manifest.webmanifest`, `icon-*.png`: offline use and the Home Screen install
+- `*.woff2`: Barlow and Barlow Condensed, under the SIL Open Font License (`OFL-LICENSE.txt`)

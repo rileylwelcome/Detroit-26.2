@@ -8,15 +8,15 @@ const FILES = [
   'engine.js',
   'app.js',
   'manifest.webmanifest',
-  'icons/icon-180.png',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'fonts/barlow-latin-400-normal.woff2',
-  'fonts/barlow-latin-500-normal.woff2',
-  'fonts/barlow-latin-600-normal.woff2',
-  'fonts/barlow-condensed-latin-500-normal.woff2',
-  'fonts/barlow-condensed-latin-600-normal.woff2',
-  'fonts/barlow-condensed-latin-700-normal.woff2'
+  'icon-180.png',
+  'icon-192.png',
+  'icon-512.png',
+  'barlow-latin-400-normal.woff2',
+  'barlow-latin-500-normal.woff2',
+  'barlow-latin-600-normal.woff2',
+  'barlow-condensed-latin-500-normal.woff2',
+  'barlow-condensed-latin-600-normal.woff2',
+  'barlow-condensed-latin-700-normal.woff2'
 ];
 
 self.addEventListener('install', (event) => {
