@@ -332,3 +332,24 @@ label.btn { position: relative; cursor: pointer; }
 .gi-facts { color: var(--ink-2); font-size: 14px; margin-top: 3px; }
 .gi details.numbers { margin-top: 4px; }
 .gi details.numbers .q { margin-bottom: 10px; }
+
+/* AI coach */
+.btn.aibtn { border: 1px solid rgba(61, 165, 255, 0.45); background: rgba(61, 165, 255, 0.1); margin-bottom: 12px; }
+.btn.aibtn + .btn { margin-top: 0; }
+.ex-adj { color: var(--good); font-size: 13.5px; margin-top: 3px; }
+.ex-links { display: flex; flex-wrap: wrap; column-gap: 18px; }
+.notice.adj ul { margin: 6px 0 0; padding-left: 18px; }
+.notice.adj .link { min-height: 40px; margin-top: 2px; font-size: 14.5px; }
+.notice.aihome { color: var(--ink); }
+.notice.aihome b { color: var(--blue); }
+.block.ai p { font-size: 15.5px; }
+.block.ai .ai-head { font-weight: 500; font-size: 16.5px; margin-bottom: 4px; }
+.block.ai ul, .block.ai ol { margin: 0; padding-left: 20px; }
+.block.ai li { margin-top: 5px; font-size: 15.5px; }
+.ai-sec { margin-top: 12px; }
+.ai-sec:first-child { margin-top: 0; }
+.ai-sec b { font-weight: 600; }
+.block.ai .btn:first-of-type { margin-top: 14px; }
+.bump small { display: block; color: var(--ink-2); font-size: 13.5px; font-weight: 400; }
+.ok-msg { color: var(--good); font-size: 14.5px; margin: 8px 2px 0; }
+.chip[disabled], .link[disabled] { opacity: 0.45; }

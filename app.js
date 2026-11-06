@@ -47,7 +47,55 @@
   const schedWeekNow = () => Math.max(0, clampWeek(E.weekOf(today())));
   const nowWeek = () => clampWeek(E.weekOf(today()));
   const nowDay = () => (today() > E.RACE || E.weekOf(today()) < -1 ? 0 : E.dayIndex(today()));
-  const ui = { tab: 'home', trainWeek: nowWeek(), trainDay: nowDay(), schedWeek: schedWeekNow(), fuelDate: today(), foodDraft: null, liftChart: 'incline', sheet: null, ci: null, logDate: today(), error: null, confirmReset: false, confirmUndo: false, summary: null };
+  const ui = { tab: 'home', trainWeek: nowWeek(), trainDay: nowDay(), trainPart: 'a', schedWeek: schedWeekNow(), fuelDate: today(), foodDraft: null, liftChart: 'incline', sheet: null, ci: null, logDate: today(), error: null, confirmReset: false, confirmUndo: false, summary: null };
+
+  /* ---------- AI coach connection ----------
+     Kept apart from your logs, so the access code never ends up in a backup file. */
+  const AI_KEY = 'detroit262.ai.v1';
+  function loadAi() {
+    const blank = { enabled: false, url: '', token: '' };
+    try { return Object.assign(blank, JSON.parse(localStorage.getItem(AI_KEY) || '{}')); } catch (err) { return blank; }
+  }
+  let aiCfg = loadAi();
+  const saveAi = () => { try { localStorage.setItem(AI_KEY, JSON.stringify(aiCfg)); } catch (err) { /* stays for this session */ } };
+  const aiUrlOk = (u) => /^(https:\/\/[^\s/]+|http:\/\/localhost(:\d+)?)(\/|$)/.test(u || '');
+  const aiReady = () => aiCfg.enabled && aiUrlOk(aiCfg.url) && !!aiCfg.token;
+  const AI_ERRORS = {
+    offline: 'You\'re offline, so the AI coach isn\'t available. Your plan still works normally.',
+    timeout: 'That took too long, so the app stopped waiting.',
+    unreachable: 'The app couldn\'t reach your AI server. Check the server address in Settings and your connection.',
+    bad_token: 'The access code on this phone doesn\'t match your server. Check APP_TOKEN in Cloudflare.',
+    no_app_token: 'Your server is missing APP_TOKEN. Add it in Cloudflare.',
+    no_api_key: 'Your server is missing ANTHROPIC_API_KEY. Add it in Cloudflare.',
+    bad_api_key: 'Claude rejected your API key. Check ANTHROPIC_API_KEY in Cloudflare, and your Claude Console credits.',
+    busy: 'Claude is busy, or your spending limit has been reached. Try again in a minute.',
+    refused: 'Claude declined this request. Try rewording your note.',
+    cut_off: 'The answer was cut off. Try again.',
+    bad_reply: 'The answer came back in a form the app couldn\'t use. Try again.',
+    api_rejected: 'Claude rejected the request. Your worker.js may need updating.',
+    too_large: 'That request was too large to send.'
+  };
+  const aiErrorText = (code) => `${AI_ERRORS[code] || 'Something went wrong with the AI coach.'} Nothing changed.`;
+  async function aiCall(task, context, message) {
+    if (navigator.onLine === false) throw new Error('offline');
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 60000);
+    let res;
+    try {
+      res = await fetch(aiCfg.url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-app-token': aiCfg.token }, body: JSON.stringify({ task, context, message: message || '' }), signal: ctl.signal });
+    } catch (err) {
+      throw new Error(err.name === 'AbortError' ? 'timeout' : 'unreachable');
+    } finally {
+      clearTimeout(timer);
+    }
+    let data = null;
+    try { data = await res.json(); } catch (err) { /* handled below */ }
+    if (!res.ok) throw new Error((data && data.error) || 'unreachable');
+    if (!data) throw new Error('bad_reply');
+    return data;
+  }
+  let aiRequest = 0; // A newer request replaces an older one, and closing a sheet cancels it.
+  const CARE_TEXT = 'Chest pain, fainting, unusual shortness of breath, or dizziness can be serious. Stop training today and get medical care before you train again. If it\'s severe or happening now, call 911. The app didn\'t send this note anywhere and didn\'t change your plan.';
 
   /* ---------- Icons ---------- */
   const I = {
@@ -139,7 +187,6 @@
     if (s.w >= 0 && s.date < today() && E.countsAsPlanned(s)) return 'miss';
     return '';
   }
-  const goalLoadText = (ex, st) => E.loadText(ex, st.load);
 
   /* ---------- Home ---------- */
   function renderHome() {
@@ -174,11 +221,14 @@
     const due = E.dueCheckin(state, t);
     if (due) html += notice('action', due.overdue ? 'Your weekly check-in is overdue' : 'Your weekly check-in is due', `For the week ending ${E.fmtDate(due.date)}. It takes about 3 minutes.`, 'open-checkin');
     backs.forEach((b) => { html += notice('warn', b.title, b.text); });
+    const lastCi = state.checkins.slice().sort((x, y) => y.week - x.week)[0];
+    if (lastCi && lastCi.ai && lastCi.ai.headline && !lastCi.ai.stopForCare && E.diffDays(t, lastCi.date) <= 7) html += `<button class="notice aihome" data-action="open-history" data-w="${lastCi.week}"><b>From your latest AI review</b>${esc(lastCi.ai.headline)}</button>`;
 
     if (!finished) {
-      const session = started ? wk.days[E.dayIndex(t)] : weekFor(0).days[0];
+      const todayEntry = started ? wk.days[E.dayIndex(t)] : weekFor(0).days[0];
+      const session = started && todayEntry.second && state.logs[todayEntry.id] ? todayEntry.second : todayEntry;
       if (session) html += todayCard(session, started, wk);
-    } else html += `<div class="block"><b>The plan is complete.</b><p class="muted small">Your logs stay here. Export a backup from Settings to keep them.</p></div>`;
+    } else html += `<div class="block"><b>Postseason: active rest</b><p class="muted small">For up to 4 weeks, keep activity short, low in intensity, and recreational. Your logs stay here, so export a backup from Settings.</p></div>`;
 
     {
       const logged = isNum(day.sleep) || isNum(day.rhr) || isNum(day.soreness);
@@ -192,7 +242,7 @@
     // Key numbers
     const ls = E.liftState(state);
     html += `<h3 class="sec-title">Next session targets</h3><div class="tiles">
-      ${['incline', 'hack', 'row', 'ohp'].map((id) => `<button class="tile" data-action="go-train-lift" data-id="${id}"><div class="v">${ls[id].load}<small> lb</small></div><div class="l">${esc(E.STRENGTH_BESTS[id].name)}</div></button>`).join('')}
+      ${['incline', 'hack', 'row', 'ohp'].map((id) => `<button class="tile" data-action="go-train-lift" data-id="${id}"><div class="v">${E.targetFor(ls, id, Math.max(0, w))}<small> lb</small></div><div class="l">${esc(E.STRENGTH_BESTS[id].name)}</div></button>`).join('')}
     </div>`;
 
     const weight = latestWeight();
@@ -201,7 +251,7 @@
     const macros = E.macros(state.targets);
     const weekMiles = summary.miles;
     const planMiles = E.plannedMiles(state, w, t);
-    const nextTest = t <= '2027-02-06' ? '3-mile test Feb 6, goal under 27:00' : t <= '2027-04-25' ? 'Motor City Half, Apr 25, easy effort' : t <= '2027-09-04' ? 'Half test Sep 4, target 1:40:00' : 'Race day, Oct 17';
+    const nextTest = t <= '2027-02-06' ? '3-mile test Feb 6, goal under 27:00' : t <= '2027-05-02' ? '10-mile long run by May 2' : t <= '2027-09-04' ? 'Half test Sep 4, target 1:55:00' : 'Race day, Oct 17';
     const rows = [];
     rows.push(`<button class="kpi" data-action="go-progress"><span class="kl"><span class="kname">Weight</span><br><span class="ksub">${fmtShort(cp.date)} goal ${cp.weight[0]}-${cp.weight[1]} lb</span></span><span class="kv">${weight.value}<small>lb</small></span></button>`);
     rows.push(`<button class="kpi" data-action="go-progress"><span class="kl"><span class="kname">Waist</span><br><span class="ksub">${cp.waist ? `${fmtShort(cp.date)} goal ${cp.waist[0]}-${cp.waist[1]} cm` : 'Reassess in June'}</span></span><span class="kv">${latestWaist()}<small>cm</small></span></button>`);
@@ -218,13 +268,14 @@
     const done = state.logs[s.id];
     const when = started ? (s.time ? E.fmtTime(s.time) : 'Any time') : `Monday, Nov 9 at ${E.fmtTime(s.time)}`;
     const goal = s.type === 'lift'
-      ? `${E.LIFTS[s.lift].list.length} exercises${wk.deload ? ', 2 sets each' : ''}`
+      ? `${E.sessionExercises(s).length} exercises${wk.deload ? ', 2 sets each' : ''}`
       : s.type === 'run' ? s.goal.detail
-      : s.type === 'cardio' ? 'Pass the talk test the whole way.' : (s.subtitle || '');
+      : s.type === 'cardio' ? `Keep your heart rate at ${E.HR.easyLo}-${E.HR.easyHi} bpm.` : (s.subtitle || '');
     const label = done ? 'View your log' : s.type === 'recovery' ? 'Open recovery' : started ? 'Start session' : 'Log a workout now';
     return `<div class="today t-${s.type}">
       <div class="eyebrow">${esc(started ? 'Today' : 'First session')}, ${esc(when)}${s.minutes ? `, ${s.minutes} min` : ''}</div>
       <h2>${esc(s.title)}</h2>
+      ${s.second ? `<div class="goal" style="margin-bottom:0">Then ${esc(E.fmtTime(s.second.time))}: ${esc(s.second.title)}</div>` : ''}
       <div class="goal">${s.subtitle && s.type !== 'recovery' ? `${esc(s.subtitle)}. ` : ''}${esc(goal)}</div>
       <button class="btn" data-action="go-train-today">${label}</button>
       ${started ? '' : `<button class="btn alt" data-action="open-session" data-w="0" data-d="0">Preview Monday's session</button>`}
@@ -235,23 +286,33 @@
   function renderTrain() {
     const w = ui.trainWeek;
     const wk = weekFor(w);
-    const s = wk.days[ui.trainDay];
+    const dayEntry = wk.days[ui.trainDay];
+    const s = ui.trainPart === 'b' && dayEntry.second ? dayEntry.second : dayEntry;
     let html = `<div class="weeknav">
       <button class="icon-btn" data-action="train-week" data-d="-1" aria-label="Previous week" ${w <= -1 ? 'disabled style="opacity:.25"' : ''}>${I.left}</button>
       <div class="mid"><b>${wk.pre ? 'This week' : `Week ${w + 1}`}: ${esc(E.fmtDate(wk.start))} to ${esc(E.fmtDate(wk.end))}</b><span>${esc(weekLabel(wk))}</span></div>
       <button class="icon-btn" data-action="train-week" data-d="1" aria-label="Next week" ${w >= E.LAST_WEEK ? 'disabled style="opacity:.25"' : ''}>${I.right}</button>
     </div>`;
     html += `<div class="daytabs" role="tablist">${wk.days.map((d) => {
-      const st = sessionStatus(d);
+      let st = sessionStatus(d);
+      if (d.second) {
+        const other = sessionStatus(d.second);
+        st = st === 'done' && other === 'done' ? 'done' : st === 'miss' || other === 'miss' ? 'miss' : st === 'done' ? other : st;
+      }
       return `<button class="daytab ${d.d === ui.trainDay ? 'on' : ''}" role="tab" aria-selected="${d.d === ui.trainDay}" data-action="train-day" data-d="${d.d}">
-        <span class="d">${E.DAY_SHORT[d.d]}</span><span class="n">${esc(shortName(d))}</span>${st ? `<i class="st ${st === 'today' ? 'now' : st}"></i>` : ''}</button>`;
+        <span class="d">${E.DAY_SHORT[d.d]}</span><span class="n">${esc(shortName(d))}${d.second ? ` + ${esc(shortName(d.second))}` : ''}</span>${st ? `<i class="st ${st === 'today' ? 'now' : st}"></i>` : ''}</button>`;
     }).join('')}</div>`;
     const when = s.time ? E.fmtTime(s.time) : 'Any time';
+    if (dayEntry.second) {
+      html += `<div class="chips even" role="group" style="margin-bottom:12px">${[dayEntry, dayEntry.second].map((x, i) => `<button class="chip ${x === s ? 'on' : ''}" data-action="train-part" data-part="${i ? 'b' : 'a'}" aria-pressed="${x === s}">${esc(E.fmtTime(x.time))}: ${esc(shortName(x))}${state.logs[x.id] ? ', done' : ''}</button>`).join('')}</div>`;
+    }
     html += `<div class="s-head"><h2>${esc(s.title)}</h2><div class="muted">${E.DAY_NAMES[s.d]}, ${E.fmtDate(s.date)}, ${esc(when)}${s.minutes ? `, ${s.minutes} min` : ''}</div></div>`;
     if (!canLog(s)) html += notice('action', `Opens ${E.DAY_NAMES[E.dayIndex(E.weekStart(s.w))]}, ${E.fmtDate(E.weekStart(s.w))}`, 'You can preview this session now. Tap here to log this week\'s workouts instead.', 'go-train-today');
     if (s.skippedForBare) html += notice('warn', 'Optional this week', 'This is a bare-minimum week, so you can skip this session without it counting as missed.');
     if (s.date === today()) E.backOff(state, s.date).forEach((b) => { html += notice('warn', b.title, b.text); });
-    if (sessionStatus(s) === 'miss') html += notice('', 'Missed session', s.type === 'cardio' || s.type === 'run' ? 'Make up missed cardio Monday or Wednesday at 4:00 pm, or use Sunday at 9:00 am. Do not make up more than one session. You can log it here when it\'s done.' : 'Use Sunday at 9:00 am to make up one missed session. Do not make up more than one. You can log it here when it\'s done.');
+    if (sessionStatus(s) === 'miss') html += notice('', 'Missed session', 'Use Sunday at 9:00 am to make up one missed session. Do not make up more than one. You can log it here when it\'s done.');
+    html += overrideBanner(s);
+    if (canAdjust(s)) html += `<button class="btn alt aibtn" data-action="ai-adjust-open" data-id="${s.id}">${s.date === today() ? 'Adjust today\'s session' : 'Adjust this session'}</button>`;
     if (s.type === 'lift') html += renderLift(s, wk);
     else if (s.type === 'run') html += renderRun(s, wk);
     else if (s.type === 'cardio') html += renderCardio(s);
@@ -259,6 +320,15 @@
     return html;
   }
   const canLog = (s) => s.w <= E.weekOf(today());
+  const canAdjust = (s) => aiReady() && canLog(s) && !s.override && !state.logs[s.id] && s.date >= today() && (s.type === 'lift' || s.type === 'cardio' || (s.type === 'run' && s.run.effort !== 'race'));
+  function overrideBanner(s) {
+    const o = s.override;
+    if (!o) return '';
+    const logged = !!state.logs[s.id];
+    return `<div class="notice good adj"><b>${s.skippedToday ? 'Skipped for today' : 'Adjusted for today'}</b>${o.reason ? esc(o.reason) : ''}
+      ${(o.lines || []).length ? `<ul>${o.lines.map((l) => `<li>${esc(l.name)}: ${esc(l.value)}</li>`).join('')}</ul>` : ''}
+      ${logged ? '' : `<button class="link small" data-action="ai-override-undo" data-id="${s.id}">Back to the original session</button>`}</div>`;
+  }
   function liftDraft(s) {
     if (!state.drafts[s.id]) {
       const log = state.logs[s.id];
@@ -273,24 +343,25 @@
     const logged = !!state.logs[s.id];
     let html = '';
     if (wk.pre) html += notice('', 'Before your plan starts', 'Log whatever you lift this week, using your real weights. It goes on your graphs and sets your next target.');
-    else if (wk.finals) html += notice('', 'Finals deload', 'Do 2 sets per exercise, keep the same weights, and stop with at least 3 reps left.');
-    else if (wk.travel) html += notice('', 'Travel session', 'Use whatever equipment is there. Keep it simple and enjoy the trip.');
-    else if (wk.deload) html += notice('', 'Deload week', 'Do 2 sets per exercise, keep the same weights, and stop with at least 3 reps left.');
-    else if (s.w < 2) html += notice('', 'Ease back in', 'These targets sit just under your recent numbers. Stop each set with about 3 reps left. Automatic increases start in week 3, and if a weight is off, log what you used and the next target follows it.');
-    if (s.subtitle && s.subtitle === 'Light session') html += notice('', 'Light session', 'Do 2 sets per exercise and stop with at least 3 reps left.');
+    else if (wk.travel) html += notice('', 'Travel session', 'Use whatever equipment is there and follow the listed reps.');
+    else if (wk.deload) html += notice('', wk.finals ? 'Finals unloading week' : 'Unloading week', 'Do 2 sets per exercise and keep the same weights.');
+    else if (s.subtitle === 'Light session') html += notice('', 'Light session', 'Keep this short: core lifts only, with the sets and reps below.');
+    else html += notice('', `${wk.scheme.label} phase`, `Core lifts: ${wk.scheme.core.sets} sets of ${wk.scheme.core.goal} at ${Math.round(wk.scheme.core.pct * 100)}% of your estimated 1RM, resting ${wk.scheme.core.rest}. Assistance lifts: ${wk.scheme.assist.sets} sets of ${wk.scheme.assist.goal}, resting ${wk.scheme.assist.rest}.`);
     const glog = state.logs[s.id];
     if (glog && glog.source === 'garmin' && !Object.keys(glog.exercises || {}).length) html += notice('good', 'Counted from Garmin', `${glog.minutes ? `${glog.minutes} minutes` : 'Session'}${glog.hr ? `, average ${Math.round(glog.hr)} bpm` : ''}. Garmin doesn't give me reliable sets, so add your weights and reps below to update your targets and graphs.`);
-    html += `<p class="tiny" style="margin:0 2px 10px">Warm up with 5 minutes on the bike, then 2 lighter sets of the first exercise. Rest 2-3 minutes on the first two exercises, then 60-90 seconds on the rest. Leave a weight blank to use the one shown.</p>`;
-    E.LIFTS[s.lift].list.forEach((id, idx) => {
+    html += `<p class="tiny" style="margin:0 2px 10px">Warm up with 5 minutes on the bike, then 2 lighter sets of the first exercise. Leave a weight blank to use the one shown.</p>`;
+    E.sessionExercises(s).forEach((id) => {
       const ex = E.EX[id];
       const st = ls[id];
-      const nSets = deload || (s.subtitle === 'Light session') ? Math.min(2, ex.sets) : ex.sets;
-      const entry = draft.exercises[id] || { sets: [], left: s.w < 2 || deload ? 3 : 2 };
+      const plan = E.sessionPlan(s, id, deload);
+      const nSets = plan.sets;
+      const target = logged ? E.targetFor(ls, id, s.w) : E.sessionTarget(ls, s, id);
+      const entry = draft.exercises[id] || { sets: [] };
       const unit = ex.kind === 'time' ? null : ex.kind === 'assist' ? 'assist' : 'lb';
-      const rangeText = ex.kind === 'time' ? `${nSets} x ${ex.min}-${ex.max} sec` : `${nSets} x ${ex.min === ex.max ? ex.min : `${ex.min}-${ex.max}`}${ex.perLeg ? ' per leg' : ''}`;
+      const rangeText = ex.kind === 'time' ? `${nSets} x ${target} sec` : `${nSets} x ${plan.goal}${ex.perLeg ? ' per leg' : ''}${ex.kind === 'power' ? ', as fast as you can' : ''}`;
       const statusCls = logged && st.status === 'up' ? 'up' : logged && st.status === 'down' ? 'down' : '';
-      html += `<div class="ex"><div class="ex-top"><div><div class="ex-name">${esc(ex.name)}</div><div class="ex-pres">${rangeText}${idx < 2 ? ', rest 2-3 min' : ''}</div>${st.load == null ? '<div class="ex-pres">Pick a weight that leaves about 3 reps.</div>' : ''}</div>
-        <div class="ex-goal ${statusCls}">${esc(goalLoadText(ex, st))}<small>${logged ? 'next target' : 'target'}</small></div></div>`;
+      html += `<div class="ex"><div class="ex-top"><div><div class="ex-name">${esc(ex.name)}</div><div class="ex-pres">${rangeText}, rest ${plan.rest}</div>${target == null && ex.kind !== 'power' ? `<div class="ex-pres">Find the weight that gets you about ${plan.goal + 2} reps at most.</div>` : ''}${plan.adjusted ? `<div class="ex-adj">Adjusted today${plan.note ? `: ${esc(plan.note)}` : ''}</div>` : ''}</div>
+        <div class="ex-goal ${statusCls}">${esc(E.loadText(ex, target))}<small>${logged ? 'next target' : plan.adjusted ? 'today' : 'target'}</small></div></div>`;
       html += '<div class="sets">';
       for (let i = 0; i < nSets; i++) {
         const set = entry.sets[i] || {};
@@ -298,19 +369,18 @@
         for (let j = i - 1; j >= 0; j--) {
           if (entry.sets[j] && entry.sets[j].w !== undefined && entry.sets[j].w !== '') { carried = entry.sets[j].w; break; }
         }
-        const defaultW = carried != null ? carried : st.load != null && st.load !== 0 ? st.load : '';
+        const defaultW = carried != null ? carried : target != null && target !== 0 ? target : '';
         const wVal = set.w !== undefined ? set.w : '';
         html += `<div class="setrow"><span class="i">${i + 1}</span>`;
         if (ex.kind === 'time') html += `<span class="tiny">Hold for</span>`;
+        else if (ex.kind === 'power') html += `<span class="tiny">Bodyweight</span>`;
         else html += field(`data-set="w" data-ex="${id}" data-i="${i}" aria-label="${esc(ex.name)} set ${i + 1} weight"`, unit, wVal, defaultW === '' ? (ex.start === 0 ? '0' : '') : String(defaultW), !canLog(s));
-        html += field(`data-set="r" data-ex="${id}" data-i="${i}" aria-label="${esc(ex.name)} set ${i + 1} ${ex.kind === 'time' ? 'seconds' : 'reps'}"`, ex.kind === 'time' ? 'sec' : 'reps', set.r, ex.kind === 'time' ? String(st.load) : ex.min === ex.max ? String(ex.min) : `${ex.min}-${ex.max}`, !canLog(s));
+        html += field(`data-set="r" data-ex="${id}" data-i="${i}" aria-label="${esc(ex.name)} set ${i + 1} ${ex.kind === 'time' ? 'seconds' : 'reps'}"`, ex.kind === 'time' ? 'sec' : 'reps', set.r, ex.kind === 'time' ? String(target) : String(plan.goal), !canLog(s));
         html += '</div>';
       }
       html += '</div>';
-      if (ex.kind !== 'time' && canLog(s)) {
-        html += `<div class="leftrow"><span>Reps left in the tank</span>${chips(`left:${id}`, [{ v: 0, l: '0' }, { v: 1, l: '1' }, { v: 2, l: '2' }, { v: 3, l: '3+' }], entry.left == null ? (s.w < 2 || deload ? 3 : 2) : entry.left)}</div>`;
-      }
-      if (E.exerciseHistory(state, id).rows.length) html += `<button class="link small" data-action="open-lift-chart" data-id="${id}">View progress graph</button>`;
+      const hasGraph = E.exerciseHistory(state, id).rows.length > 0;
+      if (hasGraph || aiReady()) html += `<div class="ex-links">${hasGraph ? `<button class="link small" data-action="open-lift-chart" data-id="${id}">View progress graph</button>` : ''}${aiReady() ? `<button class="link small" data-action="ai-explain" data-id="${id}">Why and how</button>` : ''}</div>`;
       if (st.last) html += `<div class="ex-last">Last: ${st.last.sets.map((x) => (ex.kind === 'time' ? `${x.r} sec` : x.w != null && x.w !== '' ? `${x.w}x${x.r}` : `${x.r} reps`)).join(', ')}</div>`;
       if (logged && st.reason && st.last && st.last.w === s.w) html += `<div class="ex-why">${esc(st.reason)}</div>`;
       html += '</div>';
@@ -334,9 +404,9 @@
     const g = s.goal;
     const run = s.run;
     let html = '';
-    if (s.repeated) html += notice('', 'Repeat this block', 'A recent week did not pass the talk test or was not logged, so you are holding here before moving on.');
-    if (wk.shift >= 4 && s.w >= 6) html += notice('warn', `You're ${wk.shift} weeks behind the mileage plan`, 'Mileage has slid back to match where you are, and finishing healthy should be the goal for now. Unlogged weeks count too, so if you ran them, log them here.');
-    html += `<div class="goalbox"><div class="gl">${run.kind === 'intervals' ? 'Goal time' : run.effort === 'test' ? 'Goal time' : run.effort === 'race' ? 'Distance' : 'Goal time'}</div><div class="gv">${esc(g.headline)}</div>${s.subtitle ? `<div class="muted">${esc(s.subtitle)}</div>` : ''}<p>${esc(g.detail)}</p></div>`;
+    if (s.repeated) html += notice('', 'Repeat this block', 'A recent week missed its heart-rate target or was not logged, so you are holding here before moving on.');
+    if (wk.shift >= 4 && s.w >= 6) html += notice('warn', `You're ${Math.min(wk.shift, 6)}+ weeks behind the mileage plan`, 'Mileage has slid back to match where you are, and finishing healthy should be the goal for now. Unlogged weeks count too, so if you ran them, log them here.');
+    html += `<div class="goalbox"><div class="gl">${run.kind === 'intervals' ? 'Goal time' : run.effort === 'test' ? 'Goal time' : run.effort === 'race' ? 'Distance' : 'Goal time'}</div><div class="gv">${esc(g.headline)}</div>${s.subtitle ? `<div class="muted">${esc(s.subtitle)}</div>` : ''}<p>${esc(g.detail)}</p>${aiReady() ? '<button class="link small" data-action="ai-explain" data-id="">Why this run</button>' : ''}</div>`;
     if (run.kind === 'intervals') {
       html += `<div class="block"><ol class="steps">
         <li><b>Walk 5 minutes</b></li>
@@ -353,7 +423,7 @@
       <div><span class="lbl">Minutes</span>${field('data-run="min" inputmode="numeric"', 'min', d.min, '')}</div>
       <div><span class="lbl">Seconds</span>${field('data-run="sec" inputmode="numeric"', 'sec', d.sec, '0')}</div>
       <div class="wide"><span class="lbl">Average heart rate (optional)</span>${field('data-run="hr" inputmode="numeric"', 'bpm', d.hr, '')}</div>
-      <div class="wide"><span class="lbl">Could you speak in full sentences throughout?</span>${chips('talk', [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], d.talk, 'even')}</div>
+      <div class="wide"><span class="lbl">${['tempo', 'interval', 'fartlek', 'test', 'race'].includes(run.effort) ? 'Did you hit the planned effort?' : `Did your heart rate stay at or under ${E.HR.easyHi} bpm?`}</span>${chips('talk', [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], d.talk, 'even')}</div>
       <div class="wide"><span class="lbl">Did you finish the whole session?</span>${chips('completed', [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], d.completed ? 'yes' : 'no', 'even')}</div>
       <div class="wide"><span class="lbl">Was this a hard, all-out effort?</span>${chips('hard', [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], d.hard ? 'yes' : 'no', 'even')}<span class="tiny" style="display:block;margin-top:5px">Hard efforts update your race estimates. Easy runs update your easy pace.</span></div>
     </div></div>`;
@@ -367,13 +437,13 @@
       state.drafts[s.id] = log ? { machine: log.machine, minutes: log.minutes, talk: log.talk } : { machine: s.title === 'Bike' ? 'Bike' : 'Stairmaster', minutes: '', talk: null };
     }
     const d = state.drafts[s.id];
-    let html = `<div class="goalbox"><div class="gl">Goal time</div><div class="gv">${s.minutes} min</div><p>Easy effort on your choice of machine. You should be able to speak in full sentences throughout.</p></div>`;
+    let html = `<div class="goalbox"><div class="gl">Goal time</div><div class="gv">${s.minutes} min</div><p>Keep your heart rate at ${E.HR.easyLo}-${E.HR.easyHi} bpm on your choice of machine.</p></div>`;
     if (!canLog(s)) return html;
     const logged = state.logs[s.id];
     html += `<div class="block"><div class="q"><span class="lbl">Machine</span>${chips('machine', ['Stairmaster', 'Bike'], d.machine, 'even')}</div>
       <div class="q"><span class="lbl">Minutes</span>${field('data-cardio="minutes" inputmode="numeric"', 'min', d.minutes, String(s.minutes))}</div>
-      <div class="q"><span class="lbl">Could you speak in full sentences throughout?</span>${chips('talk', [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], d.talk, 'even')}</div>
-      <p class="tiny">Optional afterward: 10 minutes in the sauna, with water. Leave right away if you feel dizzy.</p></div>`;
+      <div class="q"><span class="lbl">Did your heart rate stay at or under ${E.HR.easyHi} bpm?</span>${chips('talk', [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], d.talk, 'even')}</div>
+      <p class="tiny">Optional afterward, and not part of the NSCA program: 10 minutes in the sauna, with water. Leave right away if you feel dizzy.</p></div>`;
     if (ui.error) html += `<p class="err">${esc(ui.error)}</p>`;
     html += `<button class="btn" data-action="save-cardio" data-id="${s.id}">${logged ? 'Update session' : 'Save session'}</button>${logged ? `<button class="btn alt" data-action="delete-log" data-id="${s.id}">Delete this log</button>` : ''}`;
     return html;
@@ -387,7 +457,7 @@
   function renderRecovery(s, wk) {
     const log = state.logs[s.id] || { type: 'recovery', items: {} };
     let html = '';
-    if (s.d === 6) {
+    if (s.d === 6 && s.w < E.LAST_WEEK) {
       const c = state.checkins.find((x) => x.week === s.w);
       html += c
         ? notice('good', 'Check-in complete', `You finished this week's check-in on ${E.fmtDate(c.date)}.`)
@@ -418,22 +488,22 @@
       <div class="mid"><b>Week ${w + 1}: ${esc(E.fmtDate(wk.start))} to ${esc(E.fmtDate(wk.end))}</b><span>${esc(weekLabel(wk))}</span></div>
       <button class="icon-btn" data-action="sched-week" data-d="1" aria-label="Next week" ${w >= E.LAST_WEEK ? 'disabled style="opacity:.25"' : ''}>${I.right}</button>
     </div>`;
-    if (wk.bare) html += notice('warn', 'Bare-minimum week', 'Do Upper A, Lower, the Tuesday run, and the Saturday run. That still counts as a win.');
+    if (wk.bare) html += notice('warn', 'Bare-minimum week', 'Do Lower A, Push, Pull, the Wednesday run, and the Saturday run. That still counts as a win.');
     if (w >= 6 && w <= 7 && t >= '2026-12-20') html += notice('', 'Set your new times', 'Keep this order and change the times to fit your new schedule.', 'open-settings');
     html += '<div class="block flat" style="margin-bottom:12px">';
-    wk.days.forEach((s) => {
+    E.weekSessions(wk).forEach((s) => {
       const st = sessionStatus(s);
       const right = st === 'done' ? 'Done' : s.minutes ? `${s.minutes} min` : '';
       const rightSub = st === 'miss' ? 'Missed' : s.skippedForBare ? 'Optional' : '';
-      if (s.d === 6) {
+      if (s.d === 6 && w < E.LAST_WEEK) {
         const done = state.checkins.some((x) => x.week === w);
         html += `<button class="sch ${s.date === t && !done ? 'istoday' : ''}" data-action="scroll-checkin">
           <span class="when"><b>Sun</b><span>${E.fmtTime(state.checkinTime).replace(' ', '')}</span></span>
           <span class="what"><b>Weekly check-in</b><span>Before breakfast. Instructions below.</span></span>
           <span class="right">${done ? 'Done' : '3 min'}<span></span></span></button>`;
       }
-      const goalLine = s.type === 'run' ? (s.run.kind === 'intervals' ? s.subtitle : `${s.subtitle}, goal ${s.goal.headline}`) : s.type === 'lift' ? (wk.deload ? 'Deload, 2 sets each' : s.subtitle || `${E.LIFTS[s.lift].list.length} exercises`) : s.subtitle;
-      html += `<button class="sch ${s.date === t ? 'istoday' : ''} ${s.skippedForBare ? 'skip' : ''}" data-action="open-session" data-w="${s.w}" data-d="${s.d}">
+      const goalLine = s.type === 'run' ? (s.run.kind === 'intervals' ? s.subtitle : `${s.subtitle}, goal ${s.goal.headline}`) : s.type === 'lift' ? (wk.deload ? 'Deload, 2 sets each' : s.subtitle || `${E.sessionExercises(s).length} exercises`) : s.subtitle;
+      html += `<button class="sch ${s.date === t ? 'istoday' : ''} ${s.skippedForBare ? 'skip' : ''}" data-action="open-session" data-w="${s.w}" data-d="${s.d}" data-part="${s.part === 'b' ? 'b' : 'a'}">
         <span class="when"><b>${E.DAY_SHORT[s.d]}</b><span>${s.time ? E.fmtTime(s.time).replace(' ', '') : 'Any time'}</span></span>
         <span class="what"><b>${esc(s.title)}</b><span>${esc(goalLine || '')}</span></span>
         <span class="right">${esc(right)}<span>${esc(rightSub)}</span></span></button>`;
@@ -443,7 +513,8 @@
     // Check-in with exact instructions
     const c = state.checkins.find((x) => x.week === w);
     const date = E.checkinDate(w);
-    html += `<div class="ci-card" id="checkin-card"><div class="muted small">Weekly check-in, about 3 minutes</div><h3>Sunday, ${E.fmtDate(date)} at ${E.fmtTime(state.checkinTime)}</h3><div class="small">Before breakfast, so your waist and weight are comparable and your new portions are ready for meal prep.</div>`;
+    if (w < E.LAST_WEEK) html += `<div class="ci-card" id="checkin-card"><div class="muted small">Weekly check-in, about 3 minutes</div><h3>Sunday, ${E.fmtDate(date)} at ${E.fmtTime(state.checkinTime)}</h3><div class="small">Before breakfast, so your waist and weight are comparable and your new portions are ready for meal prep.</div>`;
+    if (w < E.LAST_WEEK) {
     if (wk.travel) html += '<div class="small" style="margin-top:8px">Keep this one short: you\'re traveling, so nothing changes and no waist or weight is needed.</div>';
     html += `<ol class="steps">${E.checkinInstructions(state, w).map((x) => `<li><b>${esc(x.title)}</b><span>${esc(x.text)}</span></li>`).join('')}</ol>`;
     if (c) html += `<button class="btn alt" style="margin-top:14px" data-action="open-history" data-w="${w}">View this check-in</button>`;
@@ -451,10 +522,12 @@
     else html += `<p class="tiny" style="margin-top:12px;color:var(--ink-2)">The check-in opens on ${E.fmtDate(date)}.</p>`;
     html += '</div>';
 
+    } else html += notice('good', 'Race week', 'No check-in this week. Enjoy the race.');
+
     html += `<details class="more"><summary>If you miss a session</summary><div class="inner"><ul>
-      <li>Use Monday or Wednesday at 4:00 pm for missed cardio, or Sunday at 9:00 am for one missed session of any kind.</li>
+      <li>Use Sunday at 9:00 am to make up one missed session of any kind.</li>
       <li>Do not try to make up more than one.</li>
-      <li>Bare-minimum week: Upper A, Lower, the Tuesday run, and the Saturday run.</li>
+      <li>Bare-minimum week: Lower A, Push, Pull, the Wednesday run, and the Saturday run.</li>
     </ul></div></details>`;
     html += '<button class="btn alt" data-action="export-ics">Add the next 6 weeks to Calendar</button>';
     html += '<button class="btn alt" data-action="open-settings">Change training times</button>';
@@ -549,7 +622,7 @@
       <li><b>Extras:</b> salsa, Bachan's, almond milk, Outshine bars, creatine as needed</li>
     </ul><p class="tiny" style="margin-top:6px">Target budget: $100 a week. If your receipt runs high, swap some trout for chicken.</p></div></details>`;
     html += `<details class="more"><summary>Fluids and supplements</summary><div class="inner"><ul>
-      <li>Water: about 3 liters a day, and more on long-run days.</li>
+      <li>Fluids: about 3.7 liters a day from all sources, and more on long-run days. Keep sweat loss during training under 2% of body weight.</li>
       <li>Creatine: 3-5 g a day.</li>
       <li>Caffeine: stay at or under 200-300 mg a day, with your last dose by 1:00 pm.</li>
     </ul></div></details>`;
@@ -676,7 +749,7 @@
     html += `<div class="block flat">
       <div class="kpi"><span class="kl"><span class="kname">Easy pace goal</span><br><span class="ksub">${stats.logged ? 'Learned from your last 3 easy runs' : 'Starts from your 10:00 test mile'}</span></span><span class="kv">${E.fmtPace(stats.easyLo)}<small>to ${E.fmtPace(stats.easyHi)}</small></span></div>
       ${pred ? `<div class="kpi"><span class="kl"><span class="kname">3-mile estimate</span><br><span class="ksub">Stretch goal 27:00</span></span><span class="kv">${E.fmtDur(pred.threeMile)}</span></div>
-      <div class="kpi"><span class="kl"><span class="kname">Half estimate</span><br><span class="ksub">Stretch signal 1:40:00</span></span><span class="kv">${E.fmtDur(pred.half)}</span></div>
+      <div class="kpi"><span class="kl"><span class="kname">Half estimate</span><br><span class="ksub">Target 1:55:00</span></span><span class="kv">${E.fmtDur(pred.half)}</span></div>
       <div class="kpi"><span class="kl"><span class="kname">Marathon estimate</span><br><span class="ksub">Assumes the long runs are done</span></span><span class="kv">${E.fmtDur(pred.marathon)}</span></div>` : `<div class="kpi"><span class="kl"><span class="kname">Race estimates</span><br><span class="ksub">These appear after your first hard effort. Your 3-mile test is February 6.</span></span></div>`}
     </div>`;
 
@@ -684,19 +757,18 @@
     html += `<h3 class="sec-title">Strength goals</h3><div class="block">${Object.keys(E.STRENGTH_GOALS).map((id) => {
       const best = E.STRENGTH_BESTS[id];
       const goal = E.STRENGTH_GOALS[id];
-      let bestSet = { w: best.w, r: best.r };
       let bestE = E.e1rm(best.w, best.r);
       E.exerciseHistory(state, id).rows.forEach((row) => row.sets.forEach((s) => {
-        const value = E.e1rm(Number(s.w) || 0, s.r);
-        if (value > bestE) { bestE = value; bestSet = s; }
+        bestE = Math.max(bestE, E.e1rm(Number(s.w) || 0, s.r));
       }));
       const startE = E.e1rm(best.w, best.r);
+      const febE = E.e1rm(goal.feb.w, goal.feb.r);
       const goalE = E.e1rm(goal.jun.w, goal.jun.r);
       const pct = Math.max(0, Math.min(100, ((bestE - startE) / (goalE - startE)) * 100));
-      return `<div class="macro"><div class="macro-top"><b>${esc(best.name)}</b><span>${bestSet.w} x ${bestSet.r === 7.5 ? '7-8' : bestSet.r}</span></div>
+      return `<div class="macro"><div class="macro-top"><b>${esc(best.name)}</b><span>${Math.round(bestE)} <small>lb est. 1RM</small></span></div>
         <div class="bar"><i style="width:${pct}%;background:var(--good)"></i></div>
-        <div class="macro-note">Feb 7 goal ${goal.feb.w} x ${goal.feb.r}, Jun 13 goal ${goal.jun.w} x ${goal.jun.r}, then hold through race day</div></div>`;
-    }).join('')}<p class="tiny" style="margin-top:12px">The number on the right is your best set so far. The bar shows your progress toward June.</p></div>`;
+        <div class="macro-note">Feb 7 goal ${Math.round(febE)} lb, Jun 13 goal ${Math.round(goalE)} lb, then maintain through race day</div></div>`;
+    }).join('')}<p class="tiny" style="margin-top:12px">Estimates use the NSCA %1RM table. The bar shows your progress toward June.</p></div>`;
 
     html += `<h3 class="sec-title">Check-ins</h3>`;
     if (!cis.length) html += `<div class="block muted small">Your first check-in is Sunday, November 15 at ${E.fmtTime(state.checkinTime)}.</div>`;
@@ -748,7 +820,7 @@
         <div><b>${s.done}/${s.planned}</b><span>Sessions</span></div>
         <div><b>${s.miles}</b><span>Miles</span></div>
         <div><b>${s.longest}</b><span>Longest run</span></div>
-      </div><p class="tiny" style="margin-top:8px">${s.talkLogged ? `Talk test passed on ${s.talkLogged - s.talkFails} of ${s.talkLogged} logged sessions.` : 'No talk tests logged this week.'} Fix anything from the Train tab.</p></div>
+      </div><p class="tiny" style="margin-top:8px">${s.talkLogged ? `Heart-rate target met on ${s.talkLogged - s.talkFails} of ${s.talkLogged} logged runs.` : 'No heart-rate results logged this week.'} Fix anything from the Train tab.</p></div>
       ${travel ? '' : `<h3 class="sec-title">Body</h3><div class="block"><div class="formgrid">
         <div class="wide"><span class="lbl">Average weight${s.weightCount ? `, from ${s.weightCount} weigh-in${s.weightCount === 1 ? '' : 's'}` : ''}</span>${field('data-ci="weightAvg"', 'lb', c.data.weightAvg, '')}</div>
         <div class="wide"><span class="lbl">Waist${E.waistDue(week) ? ', due this week' : ' (optional, due next week)'}</span>${field('data-ci="waist"', 'cm', c.data.waist, '')}</div>
@@ -784,12 +856,38 @@
     if (rec.easyPace) html += `<div class="block flat"><div class="kpi"><span class="kname">Easy pace goal</span><span class="kv">${esc(rec.easyPace)}</span></div></div>`;
     return html;
   }
+  function aiReviewBlock(rec, live) {
+    const flagged = rec.data.symptoms || E.detectRedFlags(rec.data.notes);
+    if (flagged && !rec.ai) return E.detectRedFlags(rec.data.notes) && !rec.data.symptoms ? notice('crit', 'Stop training and get checked', CARE_TEXT) : '';
+    const r = rec.ai;
+    if (!r) {
+      if (!aiReady()) return '';
+      const st = ui.ciAi || {};
+      return `<h3 class="sec-title">AI review</h3>${st.error ? `<p class="err">${esc(st.error)}</p>` : ''}<button class="btn alt aibtn" data-action="ci-ai-review" ${st.loading ? 'disabled' : ''}>${st.loading ? 'Reading your week...' : 'Get an AI review of this week'}</button><div style="height:12px"></div>`;
+    }
+    const list = (title, items) => (items.length ? `<div class="ai-sec"><b>${title}</b><ul>${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '');
+    let html = '<h3 class="sec-title">AI review</h3>';
+    if (r.stopForCare) html += notice('crit', 'Please check in with someone first', `${r.headline || ''} No changes were proposed.`.trim());
+    else html += `<div class="block ai"><p class="ai-head">${esc(r.headline)}</p>${list('What went well', r.went)}${list('Watch for', r.watch)}${list('Try this', r.suggestions)}</div>`;
+    if (E.aiHasProposal(r) && !rec.aiApplied && !rec.aiDeclined) {
+      html += `<div class="block ai"><div class="ai-sec"><b>Proposed changes</b><ul>
+        ${r.calorie ? `<li>Daily calories: ${fmtN(r.calorie.to - r.calorie.delta)} to ${fmtN(r.calorie.to)}</li>` : ''}
+        ${r.deload ? '<li>Make next week a deload</li>' : ''}
+        ${r.lifts.map((l) => `<li>${esc(l.name)}: ${esc(l.fromText)} to ${esc(l.toText)}${l.reason ? `. ${esc(l.reason)}` : ''}</li>`).join('')}
+      </ul>${r.reason ? `<p class="muted small" style="margin-top:6px">${esc(r.reason)}</p>` : ''}</div>
+      <button class="btn" data-action="ci-ai-apply" data-live="${live ? 1 : 0}">Approve these changes</button>
+      <button class="btn alt" data-action="ci-ai-decline" data-live="${live ? 1 : 0}">Keep the plan as it is</button></div>`;
+    } else if (rec.aiApplied) html += notice('good', 'Changes approved', 'They\'re included in your check-in. Undo your check-in in Settings to reverse them.');
+    if (r.rejected.length && !r.stopForCare) html += `<p class="tiny" style="margin:0 2px 12px">The app blocked ${r.rejected.length === 1 ? 'one idea' : `${r.rejected.length} ideas`} that went past your plan's limits: ${esc(r.rejected.map((x) => `${x.what} (${x.why})`).join(' '))}</p>`;
+    return html;
+  }
   function sheetCheckinReview() {
     const rec = ui.ci.rec;
     const m = E.macros(rec.after);
     const portions = rec.after.mode === 'portions';
     const week = rec.week;
     const inner = `${changesBlock(rec)}
+      ${aiReviewBlock(rec, true)}
       ${portions ? '' : `<h3 class="sec-title">Your targets next week</h3><div class="block"><div class="autostat">
         <div><b>${fmtN(rec.after.calories)}</b><span>Calories</span></div>
         <div><b>${m.proLo}-${m.proHi}</b><span>Protein, g</span></div>
@@ -804,8 +902,10 @@
     const c = state.checkins.find((x) => x.week === ui.historyWeek);
     if (!c) return '';
     const d = c.data;
+    const isLatest = state.checkins.every((x) => x.week <= c.week);
     const inner = `<p class="muted" style="margin:-4px 2px 12px">Week ${c.week + 1}, completed ${E.fmtDate(c.date)}</p>
       ${changesBlock(c)}
+      ${c.ai || isLatest ? aiReviewBlock(c, false) : ''}
       <div class="block flat">
         <div class="kpi"><span class="kname">Average weight</span><span class="kv">${isNum(d.weightAvg) ? `${d.weightAvg}<small>lb</small>` : '--'}</span></div>
         <div class="kpi"><span class="kname">Waist</span><span class="kv">${isNum(d.waist) ? `${d.waist}<small>cm</small>` : '--'}</span></div>
@@ -923,8 +1023,9 @@
     const dups = count('dup');
     const manual = count('manual');
     const walks = count('walk');
+    const addons = count('addon');
     const other = count('other');
-    const usable = matched + extras + baseline.length + walks;
+    const usable = matched + extras + baseline.length + walks + addons;
     const nameDay = (d) => `${E.DAY_SHORT[E.dayIndex(d)]}, ${E.fmtDate(d)}`;
     const detail = (x) => {
       const a = x.activity;
@@ -942,13 +1043,13 @@
         <div class="gi-to">${x.status === 'extra' ? 'Counts toward your miles as an extra run' : `Fills ${esc(x.title)}${moved ? `, planned for ${esc(nameDay(x.sessionDate))}` : ''}`}</div>`;
       if (a.kind !== 'lift') {
         const pre = E.weekOf(a.date) < 0;
-        const facts = [x.talk === 'pass' ? 'Talk test passed' : x.talk === 'fail' ? 'Talk test missed' : 'Talk test needed'];
+        const facts = [x.talk === 'pass' ? 'Heart-rate target met' : x.talk === 'fail' ? 'Heart-rate target missed' : 'Heart-rate answer needed'];
         if (a.kind === 'run' && x.status === 'match' && !pre) facts.push(x.completed ? 'finished' : 'not finished');
         if (a.kind === 'run' && x.hard) facts.push('hard effort');
         const attention = x.open || !x.talk || (!pre && (x.talk === 'fail' || (a.kind === 'run' && x.status === 'match' && !x.completed)));
-        html += `<div class="gi-facts">${esc(facts.join(', '))}${a.hr ? ', estimated from your heart rate' : ''}</div>`;
+        html += `<div class="gi-facts">${esc(facts.join(', '))}${a.hr ? `, from ${Math.round(a.hr)} bpm` : ''}</div>`;
         html += `<details class="numbers" ${attention ? 'open' : ''}><summary>${attention ? 'Check this' : 'Change'}</summary>`;
-        html += `<div class="q"><span class="lbl">Could you speak in full sentences throughout?</span>${chips(`gi:${i}:talk`, [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], x.talk || '', 'even')}</div>`;
+        html += `<div class="q"><span class="lbl">Did you stay on your heart-rate target?</span>${chips(`gi:${i}:talk`, [{ v: 'pass', l: 'Yes' }, { v: 'fail', l: 'No' }], x.talk || '', 'even')}</div>`;
         if (a.kind === 'run' && x.status === 'match' && !pre) html += `<div class="q"><span class="lbl">Did you finish the session?</span>${chips(`gi:${i}:completed`, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], x.completed ? 'yes' : 'no', 'even')}</div>`;
         if (a.kind === 'run') html += `<div class="q" style="margin-bottom:0"><span class="lbl">Was this a hard, all-out effort?</span>${chips(`gi:${i}:hard`, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], x.hard ? 'yes' : 'no', 'even')}</div>`;
         html += '</details>';
@@ -965,6 +1066,7 @@
       ${baseline.length ? notice('', 'Your running history', `${baseline.length} runs and ${Math.round(baseMiles)} miles from before this week. These set your starting pace and your baseline.`) : ''}
       ${g.parsed.unreadable ? notice('warn', `${g.parsed.unreadable} row${g.parsed.unreadable === 1 ? '' : 's'} couldn't be read`, 'Those rows will be skipped. Everything else below is fine.') : ''}
       ${cards}
+      ${addons ? `<p class="tiny" style="margin:0 2px 10px">${addons} afternoon cardio session${addons === 1 ? '' : 's'} will be checked off.</p>` : ''}
       ${walks ? `<p class="tiny" style="margin:0 2px 10px">${walks} Sunday walk${walks === 1 ? '' : 's'} will be checked off.</p>` : ''}
       ${other ? `<p class="tiny" style="margin:0 2px 10px">${other} other activit${other === 1 ? 'y' : 'ies'}, like golf or older gym sessions, won't change your plan.</p>` : ''}
       ${g.applyError ? `<p class="err">${esc(g.applyError)}</p>` : ''}
@@ -973,12 +1075,152 @@
     return sheetShell('Review your import', inner);
   }
 
+  function aiSession(id) {
+    const m = /^w(-?\d+)d(\d)(b?)$/.exec(id);
+    const day = weekFor(Number(m[1])).days[Number(m[2])];
+    return m[3] ? day.second : day;
+  }
+  function sheetAiAdjust() {
+    const a = ui.ai;
+    const s = aiSession(a.id);
+    let inner = '';
+    if (a.stage === 'care') inner = notice('crit', 'Stop training and get checked', CARE_TEXT);
+    else if (a.stage === 'result') {
+      const c = a.checked;
+      if (c.stopForCare) inner = notice('crit', 'Stop here for today', `${c.advice || c.reason || 'Please get checked before you train again.'} Nothing in your plan changed.`);
+      else {
+        inner = `<div class="block ai"><p class="ai-head">${esc(c.advice)}</p>${c.reason ? `<p class="muted small">${esc(c.reason)}</p>` : ''}</div>`;
+        if (c.lines.length) inner += `<h3 class="sec-title">Proposed for this session</h3><div class="block">${c.lines.map((l) => `<div class="bump"><span>${esc(l.name)}${l.note ? `<small>${esc(l.note)}</small>` : ''}</span><b>${esc(l.value)}</b></div>`).join('')}</div>`;
+        if (c.rejected.length) inner += `<p class="tiny" style="margin:0 2px 12px">The app blocked ${c.rejected.length === 1 ? 'one idea' : `${c.rejected.length} ideas`} that went past your plan's limits: ${esc(c.rejected.map((x) => `${x.what} (${x.why})`).join(' '))}</p>`;
+        if (c.lines.length) inner += '<button class="btn" data-action="ai-adjust-apply">Use these changes</button><button class="btn alt" data-action="close-sheet">Keep the original session</button><p class="tiny" style="margin-top:10px">Your long-term targets and 2-for-2 streak stay put for anything you change today.</p>';
+        else inner += '<button class="btn" data-action="close-sheet">Keep the session as planned</button>';
+        inner += '<button class="link small" style="margin-top:6px" data-action="ai-adjust-edit">Change my note and ask again</button>';
+      }
+    } else {
+      inner = `<p class="muted" style="margin:-4px 2px 12px">${esc(s.title)}, ${esc(E.fmtDate(s.date))}</p>
+        <div class="block">
+          <div class="q"><span class="lbl">How long do you have?</span>${chips('ai-min', [{ v: 'full', l: 'Full' }, { v: 60, l: '60' }, { v: 45, l: '45' }, { v: 30, l: '30' }], a.minutes, 'even')}</div>
+          <div class="q"><span class="lbl">Energy</span>${chips('ai-energy', ['Low', 'OK', 'Great'], a.energy, 'even')}</div>
+          <div class="q"><span class="lbl">Soreness</span>${chips('ai-sore', ['None', 'Some', 'A lot'], a.soreness, 'even')}</div>
+          <div class="q" style="margin-bottom:0"><span class="lbl">Anything else?</span><textarea data-ai="message" maxlength="600" placeholder="For example: my right shoulder is sore, or the leg press is taken" aria-label="Anything else about today">${esc(a.message)}</textarea></div>
+        </div>
+        ${a.error ? `<p class="err">${esc(a.error)}</p>` : ''}
+        <button class="btn" data-action="ai-adjust-send" ${a.stage === 'loading' ? 'disabled' : ''}>${a.stage === 'loading' ? 'Reading your session...' : 'Ask for changes'}</button>
+        <p class="tiny" style="margin-top:10px">You'll see any changes before they apply. This sends today's session, your recent results for it, this morning's numbers, and your note to your AI server and Claude.</p>`;
+    }
+    return sheetShell('Adjust this session', inner);
+  }
+  function sheetAiExplain() {
+    const x = ui.aiExp;
+    const d = state.aiExplanations[x.key];
+    let inner = '';
+    if (x.loading) inner = '<div class="block"><p class="muted">Writing your explanation...</p></div>';
+    if (x.error) inner += `<p class="err">${esc(x.error)}</p>`;
+    if (d) {
+      const list = (title, items, tag) => (items.length ? `<h3 class="sec-title">${title}</h3><div class="block ai"><${tag}>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</${tag}></div>` : '');
+      inner += `<h3 class="sec-title">Why it's in your plan</h3><div class="block ai"><p>${esc(d.data.why_in_plan)}</p></div>
+        ${list('Set up', d.data.setup, 'ol')}${list('Focus on', d.data.cues, 'ul')}${list('Avoid', d.data.common_mistakes, 'ul')}
+        ${d.data.feel ? `<h3 class="sec-title">What you should feel</h3><div class="block ai"><p>${esc(d.data.feel)}</p></div>` : ''}
+        <p class="tiny" style="margin:0 2px">General coaching, not medical advice. Stop if something hurts.</p>
+        <button class="link small" data-action="ai-explain-refresh" ${x.loading ? 'disabled' : ''}>Write a fresh explanation</button>`;
+    }
+    return sheetShell(x.title, inner);
+  }
+  async function aiExplainFetch() {
+    const x = ui.aiExp;
+    const s = aiSession(x.sessionId);
+    const wk = weekFor(s.w);
+    const req = ++aiRequest;
+    x.loading = true;
+    x.error = null;
+    renderSheet();
+    try {
+      const out = await aiCall('explain', E.aiExplainContext(state, s, x.exId || null, wk.deload || wk.travel));
+      if (req !== aiRequest || ui.aiExp !== x) return;
+      const data = E.validateAiExplanation(out.result);
+      if (!data) throw new Error('bad_reply');
+      state.aiExplanations[x.key] = { at: today(), data };
+      save();
+    } catch (err) {
+      if (req !== aiRequest || ui.aiExp !== x) return;
+      x.error = aiErrorText(err.message);
+    }
+    x.loading = false;
+    renderSheet();
+  }
+  async function aiAdjustSend() {
+    const a = ui.ai;
+    const s = aiSession(a.id);
+    const wk = weekFor(s.w);
+    if (E.detectRedFlags(a.message)) { a.stage = 'care'; renderSheet(); return; }
+    const deload = wk.deload || wk.travel;
+    const req = ++aiRequest;
+    a.stage = 'loading';
+    a.error = null;
+    renderSheet();
+    const input = { minutes: a.minutes === 'full' ? null : Number(a.minutes), energy: a.energy, soreness: a.soreness };
+    try {
+      const out = await aiCall('adjust', E.aiAdjustContext(state, s, today(), input, deload), a.message);
+      if (req !== aiRequest || ui.ai !== a) return;
+      const checked = E.validateAiAdjustment(state, s, out.result, deload);
+      if (!checked.ok) throw new Error('bad_reply');
+      a.checked = checked;
+      a.stage = 'result';
+    } catch (err) {
+      if (req !== aiRequest || ui.ai !== a) return;
+      a.stage = 'form';
+      a.error = aiErrorText(err.message);
+    }
+    renderSheet();
+    const sh = $('.sheet');
+    if (sh) sh.scrollTop = 0;
+  }
+  async function ciAiReview(rec) {
+    const st = { loading: true, error: null };
+    ui.ciAi = st;
+    const req = ++aiRequest;
+    renderSheet();
+    try {
+      const out = await aiCall('checkin', E.aiCheckinContext(state, rec, today()), rec.data.notes || '');
+      if (req !== aiRequest || ui.ciAi !== st) return;
+      const review = E.validateAiCheckin(state, rec, out.result);
+      if (!review.ok) throw new Error('bad_reply');
+      rec.ai = review;
+      ui.ciAi = null;
+      save();
+    } catch (err) {
+      if (req !== aiRequest || ui.ciAi !== st) return;
+      st.loading = false;
+      st.error = aiErrorText(err.message);
+    }
+    renderSheet();
+  }
+  function aiCode() {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  function aiSettingsBlock() {
+    const on = aiCfg.enabled;
+    const t = ui.aiTest;
+    return `<h3 class="sec-title">AI coach</h3><div class="block">
+      <p class="muted small" style="margin-bottom:12px">It explains exercises, proposes day-of changes, and reviews your check-ins, only when you tap. Each request sends what that question needs, such as the session, recent results, check-in answers, and your note, through your server to Claude. Your full logs stay on this phone. Anything that changes your plan needs your approval.</p>
+      <div class="q"><span class="lbl">AI coach</span>${chips('ai-on', [{ v: 'off', l: 'Off' }, { v: 'on', l: 'On' }], on ? 'on' : 'off', 'even')}</div>
+      ${on ? `<div class="q"><span class="lbl">Server address</span><input class="inp" data-aicfg="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://your-worker.workers.dev" value="${esc(aiCfg.url)}" aria-label="Server address"></div>
+      <div class="q"><span class="lbl">Access code</span><input class="inp" data-aicfg="token" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(aiCfg.token)}" aria-label="Access code">
+        <div class="chips even" style="margin-top:8px"><button class="chip" data-action="ai-code">Create a code</button><button class="chip" data-action="ai-copy" ${aiCfg.token ? '' : 'disabled'}>Copy code</button></div></div>
+      <button class="btn alt" data-action="ai-test" ${t && t.loading ? 'disabled' : ''}>${t && t.loading ? 'Testing...' : 'Test connection'}</button>
+      ${t && t.ok ? '<p class="ok-msg">Connected. Your server and access code are working.</p>' : ''}${t && t.error ? `<p class="err">${esc(t.error)}</p>` : ''}` : ''}
+    </div>`;
+  }
+
   function sheetSettings() {
     const tg = state.targets;
     const timeRow = (i, label) => `<div class="kpi" style="padding:9px 0"><span class="kname">${label}</span><input class="inp" style="width:136px" type="time" data-time="${i}" value="${state.times[i] || ''}" aria-label="${label} time"></div>`;
     const last = state.checkins.slice().sort((a, b) => b.week - a.week)[0];
     const inner = `<h3 class="sec-title">Training times</h3><div class="block" style="padding-top:5px;padding-bottom:5px">
         ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => timeRow(i, d)).join('')}
+        <div class="kpi" style="padding:9px 0"><span class="kname">Afternoon session</span><input class="inp" style="width:136px" type="time" data-time="pm" value="${state.pmTime || '16:00'}" aria-label="Afternoon session time"></div>
         <div class="kpi" style="padding:9px 0"><span class="kname">Sunday check-in</span><input class="inp" style="width:136px" type="time" data-time="checkin" value="${state.checkinTime}" aria-label="Check-in time"></div>
       </div>
       <h3 class="sec-title">Nutrition</h3><div class="block">
@@ -986,6 +1228,7 @@
         <div class="q"><span class="lbl">Daily calories, if you want to set them yourself</span>${field('data-target="calories" inputmode="numeric"', 'cal', tg.calories, '')}<span class="tiny" style="display:block;margin-top:5px">Your next check-in starts from this number. The app won't go below ${fmtN(E.CALORIE_FLOOR)} on its own.</span></div>
         <div class="q"><span class="lbl">Extra daily walk</span>${chips('walk', [{ v: 0, l: 'None' }, { v: 20, l: '20 minutes' }], tg.walkMin, 'even')}</div>
       </div>
+      ${aiSettingsBlock()}
       <h3 class="sec-title">Your data</h3><div class="block">
         <p class="muted small" style="margin-bottom:12px">Your logs stay on this phone, not on GitHub. Export a backup every few weeks so you can restore them if you ever reinstall.</p>
         <button class="btn alt" data-action="export-backup">Export backup</button>
@@ -1035,6 +1278,8 @@
     else if (name === 'food') html = sheetFood();
     else if (name === 'garmin') html = sheetGarmin();
     else if (name === 'liftchart') html = sheetLiftChart();
+    else if (name === 'aiadjust') html = sheetAiAdjust();
+    else if (name === 'aiexplain') html = sheetAiExplain();
     host.innerHTML = html;
     host.dataset.name = name || '';
     document.body.style.overflow = name ? 'hidden' : '';
@@ -1067,18 +1312,20 @@
     const before = E.liftState(state);
     const exercises = {};
     let any = false;
-    E.LIFTS[s.lift].list.forEach((ex) => {
+    E.sessionExercises(s).forEach((ex) => {
       const spec = E.EX[ex];
       const entry = draft.exercises[ex];
       if (!entry) return;
-      let carry = before[ex].load;
-      const sets = (entry.sets || []).map((set) => {
+      let carry = E.sessionTarget(before, s, ex);
+      const changed = E.exerciseOverride(s, ex);
+      const raw = changed ? (entry.sets || []).slice(0, E.sessionPlan(s, ex, wk.deload || wk.travel).sets) : (entry.sets || []);
+      const sets = raw.map((set) => {
         if (set.w !== undefined && set.w !== '') carry = set.w;
-        return { w: spec.kind === 'time' ? null : carry, r: set.r };
+        return { w: spec.kind === 'time' || spec.kind === 'power' ? null : carry, r: set.r };
       }).filter((set) => isNum(set.r));
       if (!sets.length) return;
       any = true;
-      exercises[ex] = { sets, left: spec.kind === 'time' ? 2 : entry.left == null ? (s.w < 2 || wk.deload ? 3 : 2) : Number(entry.left) };
+      exercises[ex] = changed ? { sets, adjusted: true } : { sets };
     });
     if (!any) {
       ui.error = 'Enter your reps for at least one set, then finish the workout.';
@@ -1092,15 +1339,12 @@
     const after = E.liftState(state);
     const lines = [];
     Object.keys(exercises).forEach((ex) => {
-      const a = after[ex];
-      const b = before[ex];
-      if (a.load !== b.load) {
-        const spec = E.EX[ex];
-        const fmt = (st) => goalLoadText(spec, st);
-        lines.push({ name: spec.name, value: `${fmt(b)} to ${fmt(a)}`, cls: a.status === 'down' ? 'down' : a.status === 'up' ? 'up' : '' });
-      }
+      const spec = E.EX[ex];
+      const from = E.targetFor(before, ex, w);
+      const to = E.targetFor(after, ex, w);
+      if (from !== to) lines.push({ name: spec.name, value: `${E.loadText(spec, from)} to ${E.loadText(spec, to)}`, cls: after[ex].status === 'up' ? 'up' : '' });
     });
-    ui.summary = { title: 'Workout saved', lines, note: lines.length ? 'Your targets updated for next time.' : (w < 2 ? 'Your next targets match what you lifted. Automatic increases start in week 3.' : 'No target changes yet. Keep the weight until every set reaches the top of its range with about 2 reps left.') };
+    ui.summary = { title: 'Workout saved', lines, note: lines.length ? 'Your next targets updated from this workout.' : 'No target changes yet. Under the 2-for-2 rule, you add weight when your last set beats the rep goal by 2 or more in 2 sessions in a row.' };
     ui.sheet = 'summary';
     render();
   }
@@ -1111,8 +1355,8 @@
     const seconds = min * 60 + sec;
     if (!isNum(d.distance) || Number(d.distance) <= 0) return fail('Enter your distance in miles.');
     if (seconds <= 0) return fail('Enter how long the session took.');
-    if (!d.talk) return fail('Answer the talk test question.');
-    const m = /^w(-?\d+)d(\d)$/.exec(id);
+    if (!d.talk) return fail('Answer the heart-rate question.');
+    const m = /^w(-?\d+)d(\d)b?$/.exec(id);
     const w = Number(m[1]);
     const before = E.runStats(state, today());
     state.logs[id] = { type: 'run', date: today(), distance: Number(d.distance), seconds, hr: isNum(d.hr) ? Number(d.hr) : null, talk: d.talk, completed: d.completed !== false, hard: !!d.hard };
@@ -1127,7 +1371,7 @@
       lines.push({ name: 'Marathon estimate', value: E.fmtDur(after.prediction.marathon) });
     }
     const note = w < 0 ? 'Saved to your running log.' : d.talk === 'fail' || d.completed === false
-      ? (w < 5 ? 'That\'s useful information. You\'ll repeat this block next week before moving on, so slow down until the talk test passes.' : 'That\'s useful information. Next week\'s mileage holds steady, and your easy pace goal slows down a little.')
+      ? (w < 5 ? 'That\'s useful information. You\'ll repeat this block next week before moving on, so slow down until your heart rate stays on target.' : 'That\'s useful information. Next week\'s mileage holds steady, and your easy pace goal slows down a little.')
       : 'Your run goals updated.';
     ui.summary = { title: 'Run saved', lines, note };
     ui.sheet = 'summary';
@@ -1136,7 +1380,7 @@
   function saveCardio(id) {
     const d = state.drafts[id];
     if (!isNum(d.minutes) || Number(d.minutes) <= 0) return fail('Enter how many minutes you did.');
-    if (!d.talk) return fail('Answer the talk test question.');
+    if (!d.talk) return fail('Answer the heart-rate question.');
     state.logs[id] = { type: 'cardio', date: today(), machine: d.machine, minutes: Number(d.minutes), talk: d.talk };
     delete state.drafts[id];
     ui.error = null;
@@ -1184,33 +1428,103 @@
     if (a === 'tab') {
       ui.tab = el.dataset.tab;
       ui.error = null;
-      if (ui.tab === 'train') { ui.trainWeek = nowWeek(); ui.trainDay = nowDay(); }
+      if (ui.tab === 'train') { ui.trainWeek = nowWeek(); ui.trainDay = nowDay(); ui.trainPart = openPart(ui.trainWeek, ui.trainDay); }
       if (ui.tab === 'schedule') ui.schedWeek = schedWeekNow();
       if (ui.tab === 'fuel') ui.fuelDate = today();
       render();
     } else if (a === 'go-schedule') { ui.tab = 'schedule'; ui.schedWeek = schedWeekNow(); render(); }
     else if (a === 'go-progress') { ui.tab = 'progress'; render(); }
     else if (a === 'go-fuel') { ui.tab = 'fuel'; ui.fuelDate = today(); render(); }
-    else if (a === 'go-train-today') { ui.tab = 'train'; ui.trainWeek = nowWeek(); ui.trainDay = nowDay(); render(); }
+    else if (a === 'go-train-today') { ui.tab = 'train'; ui.trainWeek = nowWeek(); ui.trainDay = nowDay(); ui.trainPart = openPart(ui.trainWeek, ui.trainDay); ui.error = null; render(); }
     else if (a === 'go-train-lift') {
       const id = el.dataset.id;
       const wk = weekFor(nowWeek());
-      const hit = wk.days.find((s) => s.type === 'lift' && E.LIFTS[s.lift].list.includes(id)) || wk.days[0];
+      const hit = wk.days.find((s) => s.type === 'lift' && E.sessionExercises(s).includes(id)) || wk.days[0];
       ui.tab = 'train';
       ui.trainWeek = nowWeek();
       ui.trainDay = hit.d;
+      ui.trainPart = 'a';
       render();
-    } else if (a === 'train-week') { ui.trainWeek = clampWeek(ui.trainWeek + Number(el.dataset.d)); ui.error = null; render(); }
-    else if (a === 'train-day') { ui.trainDay = Number(el.dataset.d); ui.error = null; const tabs = $('.daytabs'); const left = tabs ? tabs.scrollLeft : 0; render(); const n = $('.daytabs'); if (n) n.scrollLeft = left; }
+    } else if (a === 'train-week') { ui.trainWeek = clampWeek(ui.trainWeek + Number(el.dataset.d)); ui.trainPart = openPart(ui.trainWeek, ui.trainDay); ui.error = null; render(); }
+    else if (a === 'train-part') { ui.trainPart = el.dataset.part; ui.error = null; render(); }
+    else if (a === 'train-day') { ui.trainDay = Number(el.dataset.d); ui.trainPart = openPart(ui.trainWeek, ui.trainDay); ui.error = null; const tabs = $('.daytabs'); const left = tabs ? tabs.scrollLeft : 0; render(); const n = $('.daytabs'); if (n) n.scrollLeft = left; }
     else if (a === 'sched-week') { ui.schedWeek = Math.max(0, clampWeek(ui.schedWeek + Number(el.dataset.d))); render(); }
     else if (a === 'scroll-checkin') { const c = $('#checkin-card'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    else if (a === 'open-session') { ui.tab = 'train'; ui.trainWeek = Number(el.dataset.w); ui.trainDay = Number(el.dataset.d); ui.error = null; render(); }
+    else if (a === 'open-session') { ui.tab = 'train'; ui.trainWeek = Number(el.dataset.w); ui.trainDay = Number(el.dataset.d); ui.trainPart = el.dataset.part || 'a'; ui.error = null; render(); }
     else if (a === 'open-settings') { ui.sheet = 'settings'; ui.confirmReset = false; ui.confirmUndo = false; ui.confirmUndoGarmin = false; ui.importError = null; renderSheet(); }
     else if (a === 'open-morning') { ui.sheet = 'morning'; ui.logDate = today(); renderSheet(); }
     else if (a === 'log-date') {
       const n = E.addDays(ui.logDate, Number(el.dataset.d));
       if (n <= today()) { ui.logDate = n; renderSheet(); }
-    } else if (a === 'close-sheet') { ui.sheet = null; ui.summary = null; render(); }
+    } else if (a === 'close-sheet') { aiRequest++; ui.sheet = null; ui.summary = null; ui.ai = null; ui.aiExp = null; render(); }
+    else if (a === 'ai-adjust-open') {
+      ui.ai = { id: el.dataset.id, minutes: 'full', energy: 'OK', soreness: 'None', message: '', stage: 'form', error: null, checked: null };
+      ui.sheet = 'aiadjust';
+      renderSheet();
+    } else if (a === 'ai-adjust-send') aiAdjustSend();
+    else if (a === 'ai-adjust-edit') { ui.ai.stage = 'form'; ui.ai.checked = null; renderSheet(); }
+    else if (a === 'ai-adjust-apply') {
+      state.sessionOverrides[ui.ai.id] = E.buildOverride(ui.ai.checked, today());
+      save();
+      ui.ai = null;
+      ui.sheet = null;
+      toast('Session adjusted');
+      render();
+    } else if (a === 'ai-override-undo') {
+      delete state.sessionOverrides[el.dataset.id];
+      save();
+      toast('Back to the original session');
+      render();
+    } else if (a === 'ai-explain') {
+      const s = currentTrainSession();
+      const id = el.dataset.id;
+      const key = id || `run:${s.run.effort || s.run.kind}`;
+      ui.aiExp = { key, exId: id, sessionId: s.id, title: id ? E.EX[id].name : s.title, loading: false, error: null };
+      ui.sheet = 'aiexplain';
+      if (state.aiExplanations[key]) renderSheet();
+      else aiExplainFetch();
+    } else if (a === 'ai-explain-refresh') aiExplainFetch();
+    else if (a === 'ci-ai-review') {
+      const rec = ui.sheet === 'history' ? state.checkins.find((x) => x.week === ui.historyWeek) : ui.ci.rec;
+      ciAiReview(rec);
+    } else if (a === 'ci-ai-apply' || a === 'ci-ai-decline') {
+      const live = el.dataset.live === '1';
+      const rec = live ? ui.ci.rec : state.checkins.find((x) => x.week === ui.historyWeek);
+      if (a === 'ci-ai-decline') rec.aiDeclined = true;
+      else {
+        E.applyAiCheckin(rec, rec.ai);
+        if (!live) {
+          state.targets = rec.after;
+          state.loadEdits = (state.loadEdits || []).filter((x) => x.week !== rec.week).concat(rec.loadEdits || []);
+        }
+        toast('Changes approved');
+      }
+      save();
+      renderSheet();
+    } else if (a === 'ai-code') {
+      aiCfg.token = aiCode();
+      saveAi();
+      ui.aiTest = null;
+      renderSheet();
+    } else if (a === 'ai-copy') {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(aiCfg.token).then(() => toast('Access code copied'), () => toast('Copy was blocked. Select the code and copy it instead.'));
+      else toast('Select the code and copy it.');
+    } else if (a === 'ai-test') {
+      const t = { loading: true };
+      ui.aiTest = t;
+      renderSheet();
+      if (!aiUrlOk(aiCfg.url)) { t.loading = false; t.error = 'Enter your server address, starting with https://.'; renderSheet(); return; }
+      if (!aiCfg.token) { t.loading = false; t.error = 'Create an access code first.'; renderSheet(); return; }
+      aiCall('ping', {}).then((out) => {
+        t.loading = false;
+        if (out.ok && !out.hasKey) t.error = AI_ERRORS.no_api_key;
+        else if (out.ok) t.ok = true;
+        else t.error = AI_ERRORS.bad_reply;
+      }).catch((err) => {
+        t.loading = false;
+        t.error = AI_ERRORS[err.message] || 'The test failed.';
+      }).then(() => { if (ui.aiTest === t && ui.sheet === 'settings') renderSheet(); });
+    }
     else if (a === 'open-checkin') {
       const due = E.dueCheckin(state, today());
       const week = el.dataset.w != null ? Number(el.dataset.w) : due ? due.week : E.nextCheckinWeek(state, today());
@@ -1227,6 +1541,8 @@
         return;
       }
       ui.ci.error = null;
+      ui.ciAi = null;
+      aiRequest++;
       ui.ci.rec = E.buildCheckinRecord(state, ui.ci.data, today());
       ui.ci.stage = 'review';
       renderSheet();
@@ -1237,8 +1553,10 @@
       const rec = ui.ci.rec;
       state.targets = rec.after;
       state.checkins = state.checkins.filter((c) => c.week !== rec.week).concat([rec]);
+      state.loadEdits = (state.loadEdits || []).filter((x) => x.week !== rec.week).concat(rec.loadEdits || []);
       save();
       ui.ci = null;
+      ui.ciAi = null;
       ui.historyWeek = rec.week;
       ui.sheet = 'history';
       toast(rec.changes.length ? 'Your plan is updated' : 'Check-in saved');
@@ -1294,7 +1612,7 @@
     } else if (a === 'garmin-apply') {
       const unanswered = ui.garmin.items.findIndex((x) => (x.status === 'match' || x.status === 'extra') && x.activity.kind !== 'lift' && !x.talk);
       if (unanswered >= 0) {
-        ui.garmin.applyError = 'Some sessions have no heart rate. Answer their talk test question first.';
+        ui.garmin.applyError = 'Some sessions have no heart rate. Answer their heart-rate question first.';
         renderSheet();
         return;
       }
@@ -1316,6 +1634,7 @@
       ui.summary = { title: 'Garmin import finished', lines, note: noteParts.join(' ') || 'Your run goals and weekly totals are updated.' };
       ui.garmin = null;
       ui.ci = null;
+      ui.ciAi = null;
       ui.sheet = 'summary';
       render();
     } else if (a === 'undo-garmin') {
@@ -1355,6 +1674,7 @@
       if (last) {
         state.targets = last.before;
         state.checkins = state.checkins.filter((c) => c !== last);
+        state.loadEdits = (state.loadEdits || []).filter((x) => x.week !== last.week);
         save();
         toast('Check-in undone');
       }
@@ -1364,6 +1684,8 @@
       if (!ui.confirmReset) { ui.confirmReset = true; renderSheet(); return; }
       state = E.initialState();
       save();
+      aiCfg = { enabled: false, url: '', token: '' };
+      saveAi();
       ui.confirmReset = false;
       ui.sheet = null;
       ui.tab = 'home';
@@ -1373,6 +1695,20 @@
   });
 
   function handleChip(group, v) {
+    if (ui.sheet === 'aiadjust' && group.startsWith('ai-')) {
+      if (group === 'ai-min') ui.ai.minutes = v;
+      if (group === 'ai-energy') ui.ai.energy = v;
+      if (group === 'ai-sore') ui.ai.soreness = v;
+      renderSheet();
+      return;
+    }
+    if (group === 'ai-on') {
+      aiCfg.enabled = v === 'on';
+      saveAi();
+      ui.aiTest = null;
+      renderSheet();
+      return;
+    }
     if (group === 'gi-unit') {
       ui.garmin.unit = v;
       ui.garmin.items = E.planGarminImport(state, ui.garmin.parsed.activities, v, today());
@@ -1388,16 +1724,6 @@
       if (field2 === 'hard') item.hard = v === 'yes';
       ui.garmin.applyError = null;
       renderSheet();
-      return;
-    }
-    if (group.startsWith('left:')) {
-      const s = currentTrainSession();
-      const ex = group.split(':')[1];
-      const d = liftDraft(s);
-      d.exercises[ex] = d.exercises[ex] || { sets: [] };
-      d.exercises[ex].left = Number(v);
-      save();
-      render();
       return;
     }
     if (ui.sheet === 'morning') {
@@ -1443,7 +1769,15 @@
     save();
     render();
   }
-  const currentTrainSession = () => weekFor(ui.trainWeek).days[ui.trainDay];
+  const currentTrainSession = () => {
+    const day = weekFor(ui.trainWeek).days[ui.trainDay];
+    return ui.trainPart === 'b' && day.second ? day.second : day;
+  };
+  /* Open a day on whichever of its sessions is still to do. */
+  const openPart = (w, d) => {
+    const day = weekFor(w).days[d];
+    return day.second && state.logs[day.id] && !state.logs[day.second.id] ? 'b' : 'a';
+  };
 
   document.addEventListener('input', (ev) => {
     const el = ev.target;
@@ -1496,6 +1830,12 @@
           if (input) input.value = scaled[k];
         });
       }
+    } else if (ds.ai) {
+      ui.ai.message = el.value;
+    } else if (ds.aicfg) {
+      aiCfg[ds.aicfg] = val;
+      saveAi();
+      ui.aiTest = null;
     } else if (ds.ci) {
       ui.ci.data[ds.ci] = ds.ci === 'notes' ? el.value : val;
     } else if (ds.target === 'calories' && isNum(val)) {
@@ -1503,6 +1843,7 @@
       if (n >= 1500 && n <= 5000) { state.targets.calories = Math.round(n); save(); }
     } else if (ds.time) {
       if (ds.time === 'checkin') state.checkinTime = el.value || '09:00';
+      else if (ds.time === 'pm') state.pmTime = el.value || '16:00';
       else state.times[Number(ds.time)] = el.value || state.times[Number(ds.time)];
       save();
     }

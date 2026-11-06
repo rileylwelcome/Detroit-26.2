@@ -18,7 +18,8 @@ An offline iPhone app for marathon, lifting, nutrition, and recovery tracking. I
 
 ## Your data
 
-- Everything you log stays on your phone. Nothing you enter is sent to GitHub or anywhere else.
+- Everything you log stays on your phone, and nothing is sent to GitHub.
+- The AI coach is off until you turn it on in Settings. When it's on, the app sends only what each question needs, and only when you tap. That goes through your own Cloudflare server to Claude. The access code stays out of your backup files.
 - Go to **Settings > Export backup** every few weeks and save the file somewhere safe. Deleting the Home Screen icon can delete your logs.
 - The public repository does show the plan itself, such as your starting lift weights, weight goals, and meal plan.
 
@@ -30,10 +31,22 @@ Upload the changed file to the same repository. Your phone picks it up the next 
 
 | When | What updates |
 | --- | --- |
-| You finish a workout | Your next lift targets, with automatic increases from week 3 on |
+| You finish a workout | Your next lift targets, using the NSCA 2-for-2 rule |
 | You save a run | Easy pace goal, run time goals, and race estimates after a hard effort |
 | You import a Garmin CSV | Your runs and cardio, easy pace goal, weekly miles, and running history |
 | You finish a weekly check-in | Calories, macros, meal portions, deload weeks, and bare-minimum weeks |
+
+## AI coach
+
+| You tap | What you get |
+| --- | --- |
+| Why and how, or Why this run | An explanation tied to your plan, saved for next time |
+| Adjust today's session | A proposed change for today, based on your time, energy, soreness, and note |
+| Get an AI review | A read on your week, with optional changes to approve |
+
+The AI proposes, and `engine.js` checks each proposal against the plan's limits. Nothing applies until you approve it. Chest pain, fainting, unusual shortness of breath, or dizziness in your note gets a stop-and-get-care message, and the note isn't sent. A day-of change holds your long-term target and 2-for-2 streak for that exercise.
+
+The server code isn't part of this repository. Never put an API key in this repository, because it's public.
 
 ## Files
 

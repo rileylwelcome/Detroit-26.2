@@ -56,24 +56,28 @@
 
   /* ---------- Lifting plan ---------- */
   const EX = {
-    incline: { name: 'Incline barbell bench', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 190, big: true },
-    row: { name: 'Barbell row', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10, start: 165, big: true },
-    ohp: { name: 'Overhead press', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 110, big: true },
-    pulldown: { name: 'Lat pulldown', kind: 'weight', group: 'upper', sets: 3, min: 10, max: 12 },
+    incline: { name: 'Incline barbell bench', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 190, big: true, core: true },
+    row: { name: 'Barbell row', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10, start: 165, big: true, core: true },
+    ohp: { name: 'Overhead press', kind: 'weight', group: 'upper', sets: 3, min: 6, max: 8, start: 110, big: true, core: true },
+    pulldown: { name: 'Lat pulldown', kind: 'weight', group: 'upper', sets: 3, min: 10, max: 12, core: true },
     fly: { name: 'Cable fly', kind: 'weight', group: 'upper', sets: 2, min: 12, max: 15 },
     lateralA: { name: 'Lateral raise', kind: 'weight', group: 'upper', sets: 2, min: 12, max: 15 },
     curl: { name: 'Cable curl', kind: 'weight', group: 'upper', sets: 2, min: 10, max: 12 },
     pushdown: { name: 'Triceps pushdown', kind: 'weight', group: 'upper', sets: 2, min: 10, max: 12 },
-    hack: { name: 'Hack squat', kind: 'weight', group: 'lower', sets: 3, min: 6, max: 8, start: 210, big: true },
-    rdl: { name: 'Romanian deadlift', kind: 'weight', group: 'lower', sets: 3, min: 8, max: 10, start: 135, big: true },
+    hack: { name: 'Hack squat', kind: 'weight', group: 'lower', sets: 3, min: 6, max: 8, start: 210, big: true, core: true },
+    rdl: { name: 'Romanian deadlift', kind: 'weight', group: 'lower', sets: 3, min: 8, max: 10, start: 135, big: true, core: true },
     lunge: { name: 'Walking lunge', kind: 'weight', group: 'lower', sets: 2, min: 10, max: 10, start: 0, inc: 5, perLeg: true },
     legcurl: { name: 'Seated leg curl', kind: 'weight', group: 'lower', sets: 3, min: 10, max: 12 },
     calf: { name: 'Standing calf raise', kind: 'weight', group: 'lower', sets: 3, min: 12, max: 15 },
     plank: { name: 'Plank', kind: 'time', group: 'lower', sets: 3, min: 30, max: 45, start: 30 },
-    csrow: { name: 'Chest-supported row', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10 },
-    dbpress: { name: 'Flat dumbbell press', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10 },
-    pullup: { name: 'Pull-up or assisted pull-up', kind: 'assist', group: 'upper', sets: 3, min: 6, max: 10 },
-    machpress: { name: 'Machine shoulder press', kind: 'weight', group: 'upper', sets: 2, min: 8, max: 10 },
+    csrow: { name: 'Chest-supported row', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10, core: true },
+    dbpress: { name: 'Flat dumbbell press', kind: 'weight', group: 'upper', sets: 3, min: 8, max: 10, core: true },
+    pullup: { name: 'Pull-up or assisted pull-up', kind: 'assist', group: 'upper', sets: 3, min: 6, max: 10, core: true },
+    squatjump: { name: 'Bodyweight squat jump', kind: 'power', group: 'lower', sets: 3, min: 5, max: 5 },
+    machpress: { name: 'Machine shoulder press', kind: 'weight', group: 'upper', sets: 2, min: 8, max: 10, core: true },
+    legpress: { name: 'Leg press', kind: 'weight', group: 'lower', sets: 3, min: 8, max: 12, core: true },
+    hipthrust: { name: 'Hip thrust', kind: 'weight', group: 'lower', sets: 3, min: 8, max: 12, core: true },
+    legext: { name: 'Leg extension', kind: 'weight', group: 'lower', sets: 3, min: 10, max: 15 },
     cablerow: { name: 'Seated cable row', kind: 'weight', group: 'upper', sets: 2, min: 10, max: 12 },
     lateralB: { name: 'Lateral raise', kind: 'weight', group: 'upper', sets: 3, min: 12, max: 15 },
     reardelt: { name: 'Rear-delt fly', kind: 'weight', group: 'upper', sets: 2, min: 12, max: 15 },
@@ -88,6 +92,11 @@
     upperA: { name: 'Upper A', list: ['incline', 'row', 'ohp', 'pulldown', 'fly', 'lateralA', 'curl', 'pushdown'] },
     lower: { name: 'Lower', list: ['hack', 'rdl', 'lunge', 'legcurl', 'calf', 'plank'] },
     upperB: { name: 'Upper B', list: ['csrow', 'dbpress', 'pullup', 'machpress', 'cablerow', 'lateralB', 'reardelt', 'hammer', 'overheadext'] },
+    lowerA: { name: 'Lower A', list: ['hack', 'rdl', 'lunge', 'legcurl', 'calf', 'plank'] },
+    push: { name: 'Push', list: ['incline', 'ohp', 'machpress', 'fly', 'lateralA', 'pushdown'] },
+    pull: { name: 'Pull', list: ['row', 'pulldown', 'csrow', 'reardelt', 'curl'] },
+    lowerB: { name: 'Lower B', list: ['legpress', 'hipthrust', 'legext', 'legcurl', 'calf'] },
+    upper: { name: 'Upper', list: ['dbpress', 'pullup', 'cablerow', 'lateralB', 'overheadext', 'hammer'] },
     travel: { name: 'Full body', list: ['goblet', 'pushup', 'dbrow', 'dbrdl', 'plank'] }
   };
   const increment = (ex) => ex.inc || (ex.group === 'upper' ? 5 : 10);
@@ -103,7 +112,20 @@
     row: { feb: { w: 185, r: 8 }, jun: { w: 195, r: 8 } },
     ohp: { feb: { w: 120, r: 8 }, jun: { w: 125, r: 8 } }
   };
-  const e1rm = (w, r, left = 0) => w * (1 + (r + left) / 30);
+  /* The NSCA %1RM-by-reps table. Between listed rep counts, the value is interpolated. */
+  const PCT_BY_REPS = [[1, 1], [2, 0.95], [3, 0.93], [4, 0.9], [5, 0.87], [6, 0.85], [7, 0.83], [8, 0.8], [9, 0.77], [10, 0.75], [11, 0.7], [12, 0.67], [15, 0.65]];
+  function pctFromReps(r) {
+    const reps = Number(r);
+    if (!(reps > 0)) return 1;
+    if (reps >= 15) return 0.65;
+    for (let i = 1; i < PCT_BY_REPS.length; i++) {
+      const [r1, p1] = PCT_BY_REPS[i - 1];
+      const [r2, p2] = PCT_BY_REPS[i];
+      if (reps <= r2) return p1 + ((reps - r1) / (r2 - r1)) * (p2 - p1);
+    }
+    return 0.65;
+  }
+  const e1rm = (w, r) => (Number(w) || 0) / pctFromReps(r);
 
   /* ---------- Starting state ---------- */
   function initialState() {
@@ -111,10 +133,11 @@
       version: 1,
       times: ['08:00', '08:00', '08:00', '08:00', '09:00', '09:00', null],
       checkinTime: '09:00',
+      pmTime: '16:00',
       targets: {
-        calories: 2400,
-        protein: 175,
-        fat: 70,
+        calories: 2800,
+        protein: 165,
+        fat: 72,
         walkMin: 0,
         mealShift: false,
         mode: 'track',
@@ -126,63 +149,96 @@
       days: {},
       food: {},
       foods: {},
+      addons: {},
       extras: [],
       garminSeen: {},
       lastImport: null,
       checkins: [],
       checklist: {},
-      drafts: {}
+      drafts: {},
+      sessionOverrides: {},
+      loadEdits: [],
+      aiExplanations: {}
     };
   }
 
   /* ---------- Phases ---------- */
   const PHASES = [
-    { key: 'foundation', name: 'Foundation', from: 0, to: 5 },
-    { key: 'base', name: 'Base', from: 6, to: 17 },
-    { key: 'speed', name: 'Speed and strength', from: 18, to: 30 },
-    { key: 'block', name: 'Marathon block', from: 31, to: 45 },
-    { key: 'taper', name: 'Taper', from: 46, to: 48 }
+    { key: 'foundation', name: 'Off-season: hypertrophy, ease in', from: 0, to: 5 },
+    { key: 'base', name: 'Off-season: hypertrophy, build', from: 6, to: 17 },
+    { key: 'speed', name: 'Off-season: heavier hypertrophy', from: 18, to: 30 },
+    { key: 'block', name: 'Preseason: hypertrophy, 4 lifting days', from: 31, to: 45 },
+    { key: 'taper', name: 'In-season: taper', from: 46, to: 48 }
   ];
   const phaseOf = (w) => PHASES.find((p) => w >= p.from && w <= p.to) || (w < 0 ? PHASES[0] : PHASES[4]);
   const TRAVEL_WEEK = 8; // Jan 4-11
   const FINALS_WEEK = 5; // Dec 14-17
   const isScheduledDeload = (w) => w >= 0 && (w + 1) % 6 === 0;
 
+  /* Running minutes rise no more than 10% a week: 38, 41, 45, 49, 52. */
   const FOUNDATION = [
-    { tue: [6, 3, 2], fri: 30, sat: [7, 3, 2] },
-    { tue: [5, 4, 2], fri: 35, sat: [7, 4, 2] },
-    { tue: [5, 5, 2], fri: 35, sat: [6, 5, 2] },
-    { tue: [4, 7, 2], fri: 40, sat: [4, 10, 2] },
-    { tue: [3, 10, 2], fri: 40, sat: [2, 20, 2] }
+    { mid: [6, 3, 2], mon: 30, sat: [5, 4, 2] },
+    { mid: [5, 4, 2], mon: 33, sat: [7, 3, 2] },
+    { mid: [5, 4, 2], mon: 36, sat: [5, 5, 2] },
+    { mid: [4, 6, 2], mon: 39, sat: [5, 5, 2] },
+    { mid: [4, 6, 2], mon: 42, sat: [4, 7, 2] }
   ];
-  const FINALS = { tue: [3, 6, 2], fri: 25, satMinutes: 30 };
+  const FINALS = { mid: [3, 6, 2], mon: 25, satMinutes: 24 };
+
+  /* Physique-focused variables, within the NSCA hypertrophy range of 67-85% 1RM, 6-12 reps, 3-6 sets, and 30-90 sec rest. */
+  const LIFT_SCHEMES = {
+    foundation: { label: 'Hypertrophy, ease in', core: { sets: 3, goal: 8, pct: 0.75, rest: '60-90 sec' }, assist: { sets: 3, goal: 10, rest: '60-90 sec' } },
+    base: { label: 'Hypertrophy, build', core: { sets: 4, goal: 8, pct: 0.77, rest: '60-90 sec' }, assist: { sets: 3, goal: 10, rest: '60-90 sec' } },
+    speed: { label: 'Heavier hypertrophy', core: { sets: 4, goal: 6, pct: 0.82, rest: '90 sec' }, assist: { sets: 3, goal: 10, rest: '60-90 sec' } },
+    block: { label: 'Preseason hypertrophy', core: { sets: 3, goal: 8, pct: 0.77, rest: '60-90 sec' }, assist: { sets: 2, goal: 10, rest: '60-90 sec' } },
+    taper: { label: 'Taper', core: { sets: 2, goal: 6, pct: 0.7, rest: '90 sec' }, assist: { sets: 1, goal: 10, rest: '60-90 sec' } }
+  };
+  function schemeFor(w, id, deload) {
+    const ex = EX[id];
+    const phase = LIFT_SCHEMES[phaseOf(Math.max(0, w)).key];
+    const part = ex.core ? phase.core : phase.assist;
+    const sets = deload ? Math.min(2, part.sets) : part.sets;
+    return { sets, goal: ex.kind === 'time' ? null : part.goal, pct: part.pct || null, rest: part.rest, label: phase.label, core: !!ex.core };
+  }
 
   /* ---------- Running progress ----------
-     A week that fails the talk test, comes in incomplete, or has no logged runs
+     A week that misses its heart-rate target, comes in incomplete, or has no logged runs
      is repeated: every later week's mileage slides back one step. */
-  function runDaysOf(w) {
-    if (w < 6) return [1, 5];
-    if (w < 31) return [1, 4, 5];
-    return [1, 2, 4, 5];
+  function runIdsOf(w) {
+    if (w < 6) return [`w${w}d2b`, `w${w}d5`];
+    if (w < 31) return [`w${w}d0b`, `w${w}d2b`, `w${w}d5`];
+    return [`w${w}d0b`, `w${w}d2b`, `w${w}d3`, `w${w}d5`];
   }
   function runShift(state, w, today) {
     let shift = 0;
     for (let i = 0; i < w; i++) {
       if (i === FINALS_WEEK || i === TRAVEL_WEEK) continue;
       if (today && dateOf(i, 6) >= today) continue;
-      const logs = runDaysOf(i).map((d) => state.logs[`w${i}d${d}`]).filter(Boolean);
+      const logs = runIdsOf(i).map((id) => state.logs[id]).filter((l) => l && l.type === 'run');
       const failed = logs.some((l) => l.talk === 'fail' || l.completed === false);
       if (failed || (today && !logs.length)) shift++;
     }
     return shift;
   }
+  /* Weekly mileage and the long run each rise no more than 10% a week, up to each season's ceiling. */
+  const MILEAGE = (() => {
+    const curve = (e, x0, x1, y0, y1) => lerp(y0, y1, (e - x0) / (x1 - x0));
+    const ceilingWeek = (e) => (e <= 17 ? curve(e, 6, 17, 12, 20) : e <= 30 ? curve(e, 18, 30, 20, 28) : curve(e, 31, 45, 28, 40));
+    const ceilingLong = (e) => (e <= 17 ? curve(e, 6, 17, 5, 8) : e <= 30 ? curve(e, 18, 30, 8, 12) : curve(e, 31, 45, 12, 20));
+    const table = {};
+    let week = 4.7;
+    let long = 2.6;
+    for (let e = 6; e <= 45; e++) {
+      if (e > 6) {
+        week = Math.floor(Math.min(ceilingWeek(e), week * 1.1) * 10) / 10;
+        long = Math.floor(Math.min(ceilingLong(e), long * 1.1) * 10) / 10;
+      }
+      table[e] = { week, long };
+    }
+    return table;
+  })();
   function milesFor(e) {
-    const seg = (a, x0, x1, y0, y1) => lerp(y0, y1, (a - x0) / (x1 - x0));
-    if (e < 6) return { week: 10, long: 4 };
-    if (e <= 17) return { week: seg(e, 6, 17, 12, 20), long: seg(e, 6, 17, 5, 8) };
-    if (e <= 30) return { week: seg(e, 18, 30, 20, 30), long: seg(e, 18, 30, 8, 12) };
-    if (e <= 45) return { week: seg(e, 31, 45, 30, 50), long: seg(e, 31, 45, 12, 20) };
-    return { week: 50, long: 20 };
+    return MILEAGE[clamp(Math.round(e), 6, 45)];
   }
 
   /* ---------- Pace stats ---------- */
@@ -204,9 +260,9 @@
     Object.keys(state.logs).forEach((id) => {
       const log = state.logs[id];
       if (log.type !== 'run') return;
-      const m = /^w(-?\d+)d(\d)$/.exec(id);
+      const m = /^w(-?\d+)d(\d)(b?)$/.exec(id);
       if (!m) return;
-      out.push({ id, w: Number(m[1]), d: Number(m[2]), log });
+      out.push({ id, w: Number(m[1]), d: Number(m[2]), second: m[3] === 'b', log });
     });
     (state.extras || []).forEach((x) => {
       if (x.kind !== 'run') return;
@@ -219,8 +275,8 @@
     const easy = [];
     let lastTalk = null;
     let longest = 0;
-    logs.forEach(({ w, d, log, extra }) => {
-      const session = extra ? { run: { kind: 'distance' } } : sessionFromLog(state, w, d, today);
+    logs.forEach(({ w, d, log, extra, second }) => {
+      const session = extra ? { run: { kind: 'distance' } } : sessionFromLog(state, w, d, today, second);
       const pace = runPaceFromLog(session, log);
       if (log.distance > longest) longest = log.distance;
       if (log.hard) return;
@@ -260,17 +316,20 @@
   }
   const MARATHON_TIERS = [
     { label: 'Finish healthy', sec: null },
-    { label: 'Under 4:00', sec: 4 * 3600 },
-    { label: '3:30 stretch', sec: 3.5 * 3600 }
+    { label: 'Under 4:30', sec: 4.5 * 3600 },
+    { label: 'Under 4:00 stretch', sec: 4 * 3600 }
   ];
   function marathonGoalPace(stats) {
     if (stats.prediction) {
       const p = stats.prediction.marathon / 26.2;
-      return clamp(p, 480, 660); // never quicker than the 3:30 stretch goal
+      return clamp(p, 480, 660); // keeps a marathon-pace estimate within a sensible range
     }
     return 549; // 9:09, the pace of a 4:00 marathon
   }
 
+  /* Age-predicted max of 196 (220 minus 24). Long, slow distance is about 70-80% of that. */
+  const HR = { max: 196, easyLo: 137, easyHi: 157, fartlekLo: 167, fartlekHi: 176, intervalLo: 176 };
+  const HARD_EFFORTS = ['tempo', 'interval', 'fartlek', 'test'];
   function runGoal(run, stats) {
     const lo = stats.easyLo;
     const hi = stats.easyHi;
@@ -281,17 +340,17 @@
       const dHi = (runMin * 60) / lo + walkMin / 20;
       return {
         headline: `${runMin + walkMin} min`,
-        detail: `Goal: finish every interval and pass the talk test. Running pace ${fmtPace(lo)} to ${fmtPace(hi)} per mile, about ${dLo.toFixed(1)} to ${dHi.toFixed(1)} miles in total.`,
+        detail: `Finish every interval, with your heart rate at ${HR.easyLo}-${HR.easyHi} bpm while running. Expect a running pace of ${fmtPace(lo)} to ${fmtPace(hi)} per mile and about ${dLo.toFixed(1)} to ${dHi.toFixed(1)} miles in total.`,
         lo: null, hi: null
       };
     }
     if (run.effort === 'test') {
       const g = run.goalSeconds;
-      const stretch = run.miles === 3 ? `Run all 3 miles without stopping. The stretch goal is under ${fmtDur(g)}, or 9:00 per mile.` : `Run this hard but controlled. The target is ${fmtDur(g)} or close to it, your signal for the 3:30 stretch goal.`;
+      const stretch = run.miles === 3 ? `Run all 3 miles without stopping. The stretch goal is under ${fmtDur(g)}, or 9:00 per mile.` : `Run this hard but controlled. The target is ${fmtDur(g)} or close to it, your signal for a sub-4:00 stretch goal.`;
       return { headline: fmtDur(g), detail: stretch, lo: g, hi: g };
     }
     if (run.effort === 'race') {
-      const label = run.miles > 20 ? 'Finish healthy first, then under 4:00, with 3:30 as the stretch goal.' : 'Keep this at an easy effort. It is a long training run with a medal, not a test.';
+      const label = 'Finish healthy first, then under 4:30, with under 4:00 as the stretch goal.';
       const projected = stats.prediction ? ` Current estimate: ${fmtDur(run.miles > 20 ? stats.prediction.marathon : stats.prediction.half)}.` : '';
       return { headline: `${run.miles} mi`, detail: label + projected, lo: null, hi: null };
     }
@@ -301,17 +360,19 @@
     if (run.effort === 'long') {
       pLo = lo + 10;
       pHi = hi + 15;
-      note = 'Keep the talk test honest. Slow down before you walk.';
+      note = `Long, slow distance: keep your heart rate at ${HR.easyLo}-${HR.easyHi} bpm.`;
     } else if (run.effort === 'tempo') {
-      note = `Easy pace, except ${run.tempoMin} minutes in the middle at ${fmtPace(clamp(stats.center - 75, 420, 780))} per mile.`;
-    } else if (run.effort === 'marathon') {
-      note = `Easy pace, except ${run.mpMiles} miles in the middle at ${fmtPace(marathonGoalPace(stats))} per mile.`;
+      note = `Warm up easy, then run ${run.tempoMin} minutes at a steady pace near your lactate threshold, hard but sustained. Finish easy.`;
+    } else if (run.effort === 'interval') {
+      note = `Warm up easy, then run ${run.reps} x ${run.workMin} minutes near maximal effort, at ${HR.intervalLo}+ bpm, with ${run.workMin} minutes of easy recovery after each. Finish easy.`;
+    } else if (run.effort === 'fartlek') {
+      note = `Fartlek: for ${run.fartlekMin} minutes, mix easy running with short faster bursts at ${HR.fartlekLo}-${HR.fartlekHi} bpm.`;
     } else if (run.effort === 'shakeout') {
       pLo = lo + 15;
       pHi = hi + 30;
       note = 'Short and relaxed, just enough to loosen up.';
     } else {
-      note = 'You should be able to speak in full sentences the whole way.';
+      note = `Keep your heart rate at ${HR.easyLo}-${HR.easyHi} bpm.`;
     }
     return {
       headline: `${fmtDur(run.miles * pLo)} to ${fmtDur(run.miles * pHi)}`,
@@ -324,21 +385,21 @@
   /* ---------- Week builder ---------- */
   function liftSession(w, d, key, opts) {
     const lift = LIFTS[key];
-    return Object.assign({ id: `w${w}d${d}`, w, d, date: dateOf(w, d), type: 'lift', lift: key, title: lift.name, minutes: 75, required: key === 'upperA' || key === 'lower' }, opts || {});
+    return Object.assign({ id: `w${w}d${d}`, w, d, date: dateOf(w, d), type: 'lift', lift: key, title: lift.name, minutes: 75, required: ['upperA', 'lower', 'lowerA', 'push', 'pull'].includes(key) }, opts || {});
   }
   function intervalsSession(w, d, spec, opts) {
     const [reps, run, walk] = spec;
     const minutes = reps * (run + walk) + 10;
     return Object.assign({
-      id: `w${w}d${d}`, w, d, date: dateOf(w, d), type: 'run', title: d === 5 ? 'Long run/walk' : 'Run/walk', minutes, required: true,
+      id: `w${w}d${d}`, w, d, date: dateOf(w, d), type: 'run', title: d === 5 ? 'Long run/walk' : 'Run/walk', minutes, required: d === 5,
       run: { kind: 'intervals', reps, run, walk, warm: 5, cool: 5 },
       subtitle: `${reps} x (${run} run, ${walk} walk)`
     }, opts || {});
   }
   function milesSession(w, d, miles, effort, title, extras, center) {
-    const m = effort === 'race' || effort === 'test' ? miles : roundHalf(miles);
+    const m = effort === 'race' || effort === 'test' ? miles : Math.round(miles * 10) / 10;
     return Object.assign({
-      id: `w${w}d${d}`, w, d, date: dateOf(w, d), type: 'run', title, required: d === 5 || d === 1,
+      id: `w${w}d${d}`, w, d, date: dateOf(w, d), type: 'run', title, required: d === 5,
       minutes: round5((m * center) / 60) + 10,
       run: Object.assign({ kind: 'distance', miles: m, effort, warm: 0, cool: 0 }, extras || {}),
       subtitle: `${m} miles`
@@ -358,143 +419,224 @@
     const targets = state.targets;
     const travel = w === TRAVEL_WEEK;
     const finals = w === FINALS_WEEK;
-    const deload = !travel && (isScheduledDeload(w) || targets.deloadWeeks.includes(w));
+    const deload = !travel && w >= 0 && (isScheduledDeload(w) || targets.deloadWeeks.includes(w));
     const bare = targets.bareWeeks.includes(w);
     const phase = phaseOf(w);
     const shift = runShift(state, w, today);
     const stats = runStats(state, today);
     const center = stats.center;
     const days = [];
+    const lift = (d, key, opts) => liftSession(w, d, key, opts);
+    const light = { minutes: 40, subtitle: 'Light session' };
+    /* An afternoon session on a lifting day, logged on its own. */
+    const then = (morning, afternoon, required) => {
+      morning.second = Object.assign(afternoon, { id: `w${w}d${morning.d}b`, part: 'b', required: !!required, time: state.pmTime || '16:00' });
+      return morning;
+    };
 
     if (w < 0) {
       // The days before the plan starts: log anything, nothing here is required.
-      days.push(liftSession(w, 0, 'upperA'));
+      days.push(lift(0, 'upperA'));
       days.push(milesSession(w, 1, 3, 'easy', 'Easy run', null, center));
-      days.push(liftSession(w, 2, 'lower'));
-      days.push(liftSession(w, 3, 'upperB', { required: false }));
+      days.push(lift(2, 'lower'));
+      days.push(lift(3, 'upperB', { required: false }));
       days.push(cardioSession(w, 4, 30, 'stairs'));
       days.push(milesSession(w, 5, 3, 'easy', 'Easy run', null, center));
       days.push(restSession(w, 6));
     } else if (travel) {
+      const trip = milesFor(w - Math.min(shift, 6));
+      const tripMid = (trip.week - trip.long) / 2;
       days.push({ id: `w${w}d0`, w, d: 0, date: dateOf(w, 0), type: 'recovery', title: 'Travel day', minutes: 0, required: false, subtitle: 'Walk when you can' });
-      days.push(milesSession(w, 1, 3, 'easy', 'Easy run', null, center));
-      days.push(liftSession(w, 2, 'travel', { minutes: 40, subtitle: "Use what's available", required: true }));
-      days.push(milesSession(w, 3, 3, 'easy', 'Easy run', null, center));
-      days.push(liftSession(w, 4, 'travel', { minutes: 40, subtitle: "Use what's available", required: true }));
-      days.push(milesSession(w, 5, 4, 'easy', 'Easy run', null, center));
+      days.push(milesSession(w, 1, tripMid, 'easy', 'Easy run', null, center));
+      days.push(lift(2, 'travel', { minutes: 40, subtitle: "Use what's available", required: true }));
+      days.push(milesSession(w, 3, tripMid, 'easy', 'Easy run', null, center));
+      days.push(lift(4, 'travel', { minutes: 40, subtitle: "Use what's available", required: true }));
+      days.push(milesSession(w, 5, trip.long, 'easy', 'Easy run', null, center));
       days.push(restSession(w, 6));
     } else if (w < 6) {
       const step = finals ? null : FOUNDATION[clamp(w - shift, 0, 4)];
       const repeated = !finals && w > 0 && shift > runShift(state, w - 1, today);
-      days.push(liftSession(w, 0, 'upperA'));
-      days.push(intervalsSession(w, 1, finals ? FINALS.tue : step.tue, repeated ? { repeated: true } : {}));
-      days.push(liftSession(w, 2, 'lower'));
-      days.push(liftSession(w, 3, 'upperB', { required: false }));
-      days.push(cardioSession(w, 4, finals ? FINALS.fri : step.fri, finals ? 'bike' : 'stairs'));
+      days.push(then(lift(0, 'lowerA'), cardioSession(w, 0, finals ? FINALS.mon : step.mon, finals ? 'bike' : 'stairs')));
+      days.push(lift(1, 'push'));
+      days.push(then(lift(2, 'pull'), intervalsSession(w, 2, finals ? FINALS.mid : step.mid, repeated ? { repeated: true } : {}), true));
+      days.push(lift(3, 'lowerB', { required: false }));
+      days.push(lift(4, 'upper', { required: false }));
       days.push(finals
-        ? { id: `w${w}d5`, w, d: 5, date: dateOf(w, 5), type: 'run', title: 'Easy run', minutes: 30, required: true, run: { kind: 'minutes', minutes: 30, effort: 'easy' }, subtitle: '30 min easy, walk if needed' }
+        ? { id: `w${w}d5`, w, d: 5, date: dateOf(w, 5), type: 'run', title: 'Easy run', minutes: FINALS.satMinutes, required: true, run: { kind: 'minutes', minutes: FINALS.satMinutes, effort: 'easy' }, subtitle: `${FINALS.satMinutes} min easy, walk if needed` }
         : intervalsSession(w, 5, step.sat, repeated ? { repeated: true } : {}));
       days.push(restSession(w, 6));
     } else {
-      const e = w - shift;
-      let { week: miles, long } = milesFor(e);
+      const heldBack = Math.min(shift, 6); // however long a gap, the plan resumes no more than 6 weeks behind
+      let { week: miles, long } = milesFor(w - heldBack);
       if (phase.key === 'taper') {
-        const peak = milesFor(45 - shift);
-        miles = Math.min(peak.week, [40, 30, 20][w - 46]);
-        long = Math.min(peak.long, [12, 10, 8][w - 46]);
+        const peak = milesFor(45 - heldBack);
+        miles = Math.min(peak.week, [32, 24, 16][w - 46]);
+        long = Math.min(peak.long, [12, 10, 2][w - 46]);
       } else if (deload) {
         miles *= 0.75;
         long *= 0.75;
       }
       const raceWeek = w === LAST_WEEK;
-      const isHalfWeek = dateOf(w, 6) === HALF;
       if (phase.key === 'base' || phase.key === 'speed') {
-        const mid = (miles - long) / 2;
-        days.push(liftSession(w, 0, 'upperA'));
-        if (phase.key === 'speed' && !deload) {
-          const tempoMin = Math.round(lerp(15, 30, (w - 18) / 12));
-          if (mid >= 4) days.push(milesSession(w, 1, mid, 'tempo', 'Tempo run', { tempoMin }, center));
-          else days.push(milesSession(w, 1, mid, 'easy', 'Easy run', null, center));
-        } else days.push(milesSession(w, 1, mid, 'easy', 'Easy run', null, center));
-        days.push(liftSession(w, 2, 'lower'));
-        days.push(liftSession(w, 3, 'upperB', { required: false }));
-        days.push(milesSession(w, 4, mid, 'easy', 'Easy run', null, center));
+        const mondayRun = miles >= 10 || phase.key === 'speed';
+        const mid = mondayRun ? (miles - long) / 2 : miles - long;
+        const speed = phase.key === 'speed';
+        const wedRun = speed && !deload && mid >= 3
+          ? milesSession(w, 2, mid, 'fartlek', 'Fartlek run', { fartlekMin: Math.round(clamp((mid * center) / 60 - 10, 20, 60)) }, center)
+          : milesSession(w, 2, mid, 'easy', 'Easy run', null, center);
+        days.push(then(lift(0, 'lowerA'), mondayRun ? milesSession(w, 0, mid, 'easy', 'Easy run', null, center) : cardioSession(w, 0, 40, 'stairs')));
+        days.push(lift(1, 'push'));
+        days.push(then(lift(2, 'pull'), wedRun, true));
+        days.push(lift(3, 'lowerB', { required: false }));
+        days.push(lift(4, 'upper', { required: false }));
       } else if (raceWeek) {
-        days.push(liftSession(w, 0, 'upperA', { minutes: 40, subtitle: 'Light session' }));
-        days.push(milesSession(w, 1, 8, 'easy', 'Easy run', null, center));
-        days.push(milesSession(w, 2, 5, 'easy', 'Easy run', null, center));
-        days.push({ id: `w${w}d3`, w, d: 3, date: dateOf(w, 3), type: 'recovery', title: 'Rest', minutes: 0, required: false, subtitle: 'Pack your passport or travel document' });
-        days.push(milesSession(w, 4, 4, 'easy', 'Easy run', null, center));
+        days.push(lift(0, 'push', { minutes: 30, subtitle: 'Light session', required: true }));
+        days.push(milesSession(w, 1, 6, 'easy', 'Easy run', null, center));
+        days.push({ id: `w${w}d2`, w, d: 2, date: dateOf(w, 2), type: 'recovery', title: 'Rest', minutes: 0, required: false, subtitle: 'Walk if you want to' });
+        days.push(milesSession(w, 3, 5, 'easy', 'Easy run', null, center));
+        days.push(milesSession(w, 4, 3, 'easy', 'Easy run', null, center));
       } else {
+        const taper = phase.key === 'taper';
         const mid = (miles - long) / 3;
-        days.push(liftSession(w, 0, 'lower', phase.key === 'taper' ? { minutes: 45, subtitle: 'Light session' } : {}));
-        days.push(milesSession(w, 1, mid, 'easy', 'Easy run', null, center));
-        if (deload) days.push(milesSession(w, 2, mid, 'easy', 'Easy run', null, center));
-        else {
-          const mpMiles = Math.round(lerp(3, 10, clamp((w - 31) / 14, 0, 1)));
-          const paced = Math.min(mpMiles, Math.floor(mid) - 2);
-          if (paced >= 1) days.push(milesSession(w, 2, mid, 'marathon', 'Marathon-pace run', { mpMiles: paced }, center));
-          else days.push(milesSession(w, 2, mid, 'easy', 'Easy run', null, center));
-        }
-        days.push(liftSession(w, 3, 'upperA', phase.key === 'taper' ? { minutes: 45, subtitle: 'Light session' } : {}));
-        days.push(milesSession(w, 4, mid, 'easy', 'Easy run', null, center));
+        const opts = taper ? light : {};
+        const intervalWeek = (w - 31) % 2 === 1;
+        const wedRun = deload || mid < 4 ? milesSession(w, 2, mid, 'easy', 'Easy run', null, center)
+          : intervalWeek && !taper ? milesSession(w, 2, mid, 'interval', 'Interval run', { reps: 5, workMin: 4 }, center)
+            : milesSession(w, 2, mid, 'tempo', 'Tempo run', { tempoMin: taper ? 20 : Math.round(lerp(20, 30, clamp((w - 31) / 14, 0, 1))) }, center);
+        const secondWeek = w === 47;
+        if (secondWeek) days.push({ id: `w${w}d0`, w, d: 0, date: dateOf(w, 0), type: 'run', title: 'Easy run', required: false, minutes: round5((mid * center) / 60) + 10, run: { kind: 'distance', miles: Math.round(mid * 10) / 10, effort: 'easy', warm: 0, cool: 0 }, subtitle: `${Math.round(mid * 10) / 10} miles` });
+        else days.push(then(lift(0, 'lowerA', opts), milesSession(w, 0, mid, 'easy', 'Easy run', null, center)));
+        days.push(lift(1, 'push', opts));
+        days.push(then(lift(2, 'pull', opts), wedRun, true));
+        days.push(milesSession(w, 3, mid, 'easy', 'Easy run', null, center));
+        if (taper) days.push({ id: `w${w}d4`, w, d: 4, date: dateOf(w, 4), type: 'recovery', title: 'Rest', minutes: 0, required: false, subtitle: 'Take it easy' });
+        else days.push(lift(4, 'upper', { required: false }));
       }
-      // Saturday
       const test3 = dateOf(w, 5) === '2027-02-06';
       const testHalf = dateOf(w, 5) === '2027-09-04';
-      if (raceWeek) days.push(milesSession(w, 5, 3, 'shakeout', 'Shakeout', null, center));
-      else if (isHalfWeek) days.push(milesSession(w, 5, 2, 'shakeout', 'Shakeout', null, center));
+      if (raceWeek) days.push(milesSession(w, 5, 2, 'shakeout', 'Shakeout', null, center));
       else if (test3) days.push(milesSession(w, 5, 3, 'test', '3-mile test', { goalSeconds: 27 * 60 }, 540));
-      else if (testHalf) days.push(milesSession(w, 5, 13.1, 'test', 'Half-marathon test', { goalSeconds: 100 * 60 }, 458));
-      else days.push(milesSession(w, 5, long, 'long', 'Long run', null, center + 15));
-      // Sunday
+      else if (testHalf) days.push(milesSession(w, 5, 13.1, 'test', 'Half-marathon test', { goalSeconds: 115 * 60 }, 527));
+      else days.push(milesSession(w, 5, long, 'long', 'Long, slow distance', null, center + 15));
       if (raceWeek) {
-        const s = milesSession(w, 6, 26.2, 'race', 'Detroit Free Press Marathon', null, 549);
+        const s = milesSession(w, 6, 26.2, 'race', 'Detroit Free Press Marathon', null, 600);
         s.time = '07:00';
-        s.required = true;
-        days.push(s);
-      } else if (isHalfWeek) {
-        const s = milesSession(w, 6, 13.1, 'race', 'Motor City Half', null, center);
         s.required = true;
         days.push(s);
       } else days.push(restSession(w, 6));
     }
 
-    days.forEach((s) => {
+    const finish = (s) => {
       if (s.time === undefined) s.time = s.type === 'recovery' ? state.times[6] : state.times[s.d];
-      if (bare && !s.required && s.type !== 'recovery') {
-        s.skippedForBare = true;
-      }
+      if (bare && !s.required && s.type !== 'recovery') s.skippedForBare = true;
+      applyOverride(s, state.sessionOverrides && state.sessionOverrides[s.id], center);
       if (s.type === 'run') s.goal = s.run.kind === 'minutes'
-        ? { headline: '30 min', detail: `Easy effort throughout. Target ${fmtPace(stats.easyLo)} to ${fmtPace(stats.easyHi)} per mile, walking when you need to.`, lo: null, hi: null }
+        ? { headline: `${s.run.minutes} min`, detail: `Keep your heart rate at ${HR.easyLo}-${HR.easyHi} bpm, walking when you need to. Target ${fmtPace(stats.easyLo)} to ${fmtPace(stats.easyHi)} per mile.`, lo: null, hi: null }
         : runGoal(s.run, stats);
+    };
+    days.forEach((s) => {
+      finish(s);
+      if (s.second) finish(s.second);
     });
 
-    return { w, pre: w < 0, start: weekStart(w), end: dateOf(w, 6), phase, deload, bare, travel, finals, shift, days, stats };
+    return { w, pre: w < 0, start: weekStart(w), end: dateOf(w, 6), phase, deload, bare, travel, finals, shift, days, stats, scheme: LIFT_SCHEMES[phaseOf(Math.max(0, w)).key] };
+  }
+  /* Every session in a week, including afternoon sessions. */
+  const weekSessions = (wk) => wk.days.reduce((all, s) => all.concat(s.second ? [s, s.second] : [s]), []);
+
+  /* Light sessions keep only the core lifts. An approved day-of change then applies on top. */
+  function sessionExercises(s) {
+    const list = LIFTS[s.lift].list.slice();
+    const base = s.subtitle === 'Light session' ? list.filter((id) => EX[id].core) : list;
+    const changes = (s.override && s.override.changes) || [];
+    if (!changes.length) return base;
+    const out = [];
+    base.forEach((id) => {
+      const c = changes.find((x) => x.id === id);
+      if (c && c.action === 'remove') return;
+      out.push(c && c.action === 'swap' ? c.replacement : id);
+    });
+    return out;
+  }
+  const exerciseOverride = (s, id) => ((s.override && s.override.changes) || []).find((c) => (c.action === 'swap' ? c.replacement === id : c.id === id)) || null;
+  function sessionPlan(s, id, deload) {
+    const base = schemeFor(s.w, id, deload);
+    const c = exerciseOverride(s, id);
+    if (!c) return base;
+    return Object.assign({}, base, { sets: c.sets || base.sets, goal: c.goal || base.goal, adjusted: true, note: c.note || '' });
+  }
+  function sessionTarget(ls, s, id) {
+    const c = exerciseOverride(s, id);
+    return c && c.weight != null ? c.weight : targetFor(ls, id, s.w);
+  }
+  function applyOverride(s, o, center) {
+    if (!o) return;
+    s.override = o;
+    const r = o.run;
+    if (!r || s.type === 'lift') return;
+    if (r.action === 'skip') { s.skippedToday = true; return; }
+    if (s.type === 'cardio') {
+      s.minutes = r.minutes;
+      s.subtitle = `${r.minutes} min easy`;
+      return;
+    }
+    if (r.action === 'swap_bike') {
+      s.type = 'cardio';
+      s.title = 'Bike';
+      s.minutes = r.minutes;
+      s.subtitle = `${r.minutes} min easy`;
+      s.required = false;
+      delete s.run;
+      return;
+    }
+    if (r.action === 'easy') {
+      const { kind, miles, warm, cool } = s.run;
+      s.run = { kind, miles, warm, cool, effort: 'easy' };
+      s.title = 'Easy run';
+      return;
+    }
+    if (s.run.kind === 'distance') {
+      s.run.miles = r.miles;
+      s.subtitle = `${r.miles} miles`;
+      s.minutes = round5((r.miles * center) / 60) + 10;
+    } else if (s.run.kind === 'minutes') {
+      s.run.minutes = r.minutes;
+      s.minutes = r.minutes;
+      s.subtitle = `${r.minutes} min easy, walk if needed`;
+    } else {
+      s.run.reps = r.reps;
+      s.minutes = r.reps * (s.run.run + s.run.walk) + 10;
+      s.subtitle = `${r.reps} x (${s.run.run} run, ${s.run.walk} walk)`;
+    }
   }
 
-  function sessionFromLog(state, w, d, today) {
+  function overrideReps(state, w, d, second) {
+    const o = state.sessionOverrides && state.sessionOverrides[`w${w}d${d}${second ? 'b' : ''}`];
+    return o && o.run && o.run.action === 'shorten' ? o.run.reps : null;
+  }
+  function sessionFromLog(state, w, d, today, second) {
     // Light rebuild used while reading paces, so it cannot call runStats again.
-    if (w >= 0 && w < 6 && w !== FINALS_WEEK && (d === 1 || d === 5)) {
+    if (w >= 0 && w < 6 && w !== FINALS_WEEK && ((d === 2 && second) || d === 5)) {
       const shift = runShift(state, w, today);
       const step = FOUNDATION[clamp(w - shift, 0, 4)];
-      const spec = d === 1 ? step.tue : step.sat;
-      return { run: { kind: 'intervals', reps: spec[0], run: spec[1], walk: spec[2], warm: 5, cool: 5 } };
+      const spec = d === 5 ? step.sat : step.mid;
+      return { run: { kind: 'intervals', reps: overrideReps(state, w, d, second) || spec[0], run: spec[1], walk: spec[2], warm: 5, cool: 5 } };
     }
-    if (w === FINALS_WEEK && d === 1) {
-      return { run: { kind: 'intervals', reps: 3, run: 6, walk: 2, warm: 5, cool: 5 } };
+    if (w === FINALS_WEEK && d === 2 && second) {
+      return { run: { kind: 'intervals', reps: overrideReps(state, w, d, second) || 3, run: 6, walk: 2, warm: 5, cool: 5 } };
     }
     return { run: { kind: 'distance' } };
   }
 
-  const countsAsPlanned = (s) => s.type !== 'recovery' && !s.skippedForBare && s.minutes > 0;
+  const countsAsPlanned = (s) => s.type !== 'recovery' && !s.skippedForBare && !s.skippedToday && s.minutes > 0;
 
   /* ---------- Lifting logic: replay every log, oldest first ---------- */
   function liftState(state, maxWeek) {
     const out = {};
     Object.keys(EX).forEach((id) => {
       const ex = EX[id];
-      out[id] = { load: ex.start === undefined ? null : ex.start, status: 'start', failStreak: 0, last: null, reason: null, history: [] };
+      const best = STRENGTH_BESTS[id];
+      out[id] = { load: ex.start === undefined ? null : ex.start, phaseKey: 'foundation', oneRm: best ? e1rm(best.w, best.r) : null, overStreak: 0, status: 'start', last: null, reason: null, history: [] };
     });
     const logs = Object.keys(state.logs)
       .filter((id) => state.logs[id].type === 'lift')
@@ -504,8 +646,24 @@
       })
       .filter((x) => maxWeek === undefined || x.w <= maxWeek)
       .sort((a, b) => a.w * 7 + a.d - (b.w * 7 + b.d));
+    const edits = (state.loadEdits || []).filter((e) => (maxWeek === undefined || e.week <= maxWeek) && out[e.id]).sort((a, b) => a.week - b.week);
+    let nextEdit = 0;
+    const applyEdits = (beforeWeek) => {
+      while (nextEdit < edits.length && edits[nextEdit].week < beforeWeek) {
+        const e = edits[nextEdit++];
+        const st = out[e.id];
+        st.load = e.to;
+        st.phaseKey = phaseOf(Math.max(0, e.week + 1)).key;
+        st.edited = true;
+        st.overStreak = 0;
+        st.status = e.to > e.from ? 'up' : 'down';
+        st.reason = `You approved this change at your week ${e.week + 1} check-in.`;
+      }
+    };
     logs.forEach(({ w, d, log }) => {
-      const deload = isScheduledDeload(w) || state.targets.deloadWeeks.includes(w) || w === TRAVEL_WEEK;
+      applyEdits(w);
+      const deload = w >= 0 && (isScheduledDeload(w) || state.targets.deloadWeeks.includes(w) || w === TRAVEL_WEEK);
+      const key = phaseOf(Math.max(0, w)).key;
       Object.keys(log.exercises || {}).forEach((id) => {
         const ex = EX[id];
         const entry = log.exercises[id];
@@ -516,73 +674,73 @@
         const reps = sets.map((s) => Number(s.r));
         const weights = sets.map((s) => (s.w === '' || s.w == null ? null : Number(s.w)));
         const top = weights.reduce((m, x) => (x != null && (m == null || x > m) ? x : m), null);
-        const left = entry.left == null ? 2 : Number(entry.left);
-        const need = deload ? 2 : ex.sets;
-        st.last = { date: dateOf(w, d), sets: sets.map((s) => ({ w: s.w === '' ? null : s.w, r: Number(s.r) })), left, w };
+        st.last = { date: dateOf(w, d), sets: sets.map((s) => ({ w: s.w === '' ? null : s.w, r: Number(s.r) })), w };
         if (ex.kind !== 'time' && top != null) {
-          const bestE = Math.max(...sets.map((s) => e1rm(Number(s.w) || 0, Number(s.r), left)));
-          st.history.push({ date: dateOf(w, d), w, e1rm: bestE, top });
+          const best = Math.max(...sets.map((s) => e1rm(Number(s.w) || 0, Number(s.r))));
+          st.history.push({ date: dateOf(w, d), w, e1rm: best, top, adjusted: !!entry.adjusted });
+          if (best > 0) st.oneRm = entry.adjusted ? Math.max(st.oneRm || 0, best) : best;
         }
-
+        /* A day-of change stays on your graphs, but it doesn't move your target or your 2-for-2 streak. */
+        if (entry.adjusted) {
+          if (st.load == null && top != null) st.load = top;
+          st.status = 'hold';
+          st.reason = 'You changed this for the day, so your target holds.';
+          return;
+        }
+        st.planned = st.last;
+        const scheme = schemeFor(w, id, deload);
+        if (st.phaseKey !== key) st.overStreak = 0;
+        st.phaseKey = key;
         if (ex.kind === 'time') {
           const goal = st.load;
-          if (w < 2 || deload) { st.status = 'hold'; st.reason = deload ? 'Deload, so the target holds.' : 'Automatic increases start in week 3.'; return; }
-          if (reps.length >= need && reps.every((r) => r >= goal)) {
+          if (deload || w < 0) { st.status = 'hold'; st.reason = 'Your target holds this week.'; return; }
+          const last = reps[reps.length - 1];
+          st.overStreak = last >= goal + 10 ? st.overStreak + 1 : 0;
+          if (st.overStreak >= 2) {
             st.load = Math.min(60, goal + 5);
+            st.overStreak = 0;
             st.status = st.load > goal ? 'up' : 'hold';
-            st.reason = st.load > goal ? `Every set reached ${goal} seconds.` : 'You reached the 60-second cap.';
-          } else { st.status = 'hold'; st.reason = `Hold ${goal} seconds until every set reaches it.`; }
+            st.reason = 'Your last set ran 10 seconds past the goal in 2 sessions in a row.';
+          } else { st.status = 'hold'; st.reason = 'Hold this until your last set beats the goal by 10 seconds twice in a row.'; }
           return;
         }
-
-        const base = top == null ? st.load : top;
-        const known = st.load != null;
-        if (w < 2) {
-          // Before week 3 the next target follows what you lifted, with no automatic increase.
-          if (base != null) st.load = base;
-          else if (!known) st.load = base;
-          st.status = 'hold';
-          st.reason = 'Your next target matches what you lifted. Automatic increases start in week 3.';
-          return;
-        }
-        if (deload) {
-          st.status = 'hold';
-          st.reason = 'Deload, so the target holds.';
-          return;
-        }
-        st.load = base;
-        const hitTop = reps.length >= need && reps.every((r) => r >= ex.max);
-        const allBelow = reps.length >= need && reps.every((r) => r < ex.min);
-        if (hitTop && left >= 2) {
+        if (top != null) st.load = top;
+        if (w < 0) { st.status = 'hold'; st.reason = 'Saved. Plan targets use this as your starting point.'; return; }
+        if (deload) { st.status = 'hold'; st.reason = 'Unloading week, so the target holds.'; return; }
+        if (ex.kind === 'power') { st.status = 'hold'; st.reason = 'Power work stays at bodyweight, focused on speed.'; return; }
+        const lastReps = reps[reps.length - 1];
+        st.overStreak = lastReps >= scheme.goal + 2 ? st.overStreak + 1 : 0;
+        if (st.overStreak >= 2) {
+          st.overStreak = 0;
           const inc = increment(ex);
-          if (ex.kind === 'assist') st.load = Math.max(0, (base || 0) - 10);
-          else st.load = (base || 0) + inc;
+          if (ex.kind === 'assist') st.load = Math.max(0, (st.load || 0) - 10);
+          else st.load = (st.load || 0) + inc;
           st.status = 'up';
-          st.failStreak = 0;
-          st.reason = `All sets reached ${ex.max} reps with ${left} left.`;
-        } else if (allBelow) {
-          st.failStreak += 1;
-          if (st.failStreak >= 2) {
-            st.load = ex.kind === 'assist' ? (base || 0) + 10 : Math.max(0, round5((base || 0) * 0.9));
-            st.status = 'down';
-            st.failStreak = 0;
-            st.reason = `Two sessions in a row under ${ex.min} reps, so the weight comes down about 10%.`;
-          } else {
-            st.status = 'hold';
-            st.reason = `Under ${ex.min} reps today. Try the same weight once more.`;
-          }
+          st.reason = `2-for-2 rule: your last set beat the ${scheme.goal}-rep goal by 2 or more in 2 sessions in a row.`;
         } else {
-          st.failStreak = 0;
           st.status = 'hold';
-          st.reason = `Keep this weight until every set reaches ${ex.max} reps with about 2 left.`;
+          st.reason = `Add weight when your last set reaches ${scheme.goal + 2} or more reps in 2 sessions in a row.`;
         }
       });
     });
+    applyEdits(Infinity);
     return out;
   }
+  /* The working weight for a given week: the logged weight within a phase, or a %1RM at a new phase. */
+  function targetFor(ls, id, w) {
+    const ex = EX[id];
+    const st = ls[id];
+    if (ex.kind === 'time' || ex.kind === 'power') return st.load;
+    const key = phaseOf(Math.max(0, w)).key;
+    const scheme = schemeFor(w, id, false);
+    const newPhase = st.phaseKey !== key || ((!st.planned || st.planned.w < 0) && !st.edited);
+    if (ex.core && ex.kind === 'weight' && scheme.pct && st.oneRm && newPhase && st.oneRm > 0) return round5(st.oneRm * scheme.pct);
+    return st.load;
+  }
 
-  function loadText(ex, load) {
+    function loadText(ex, load) {
     if (ex.kind === 'time') return `${load} sec`;
+    if (ex.kind === 'power') return 'Bodyweight';
     if (load == null) return 'Set it';
     if (ex.kind === 'assist') return load === 0 ? 'No assist' : `${load} lb`;
     if (load === 0) return 'Bodyweight';
@@ -595,7 +753,7 @@
     Object.keys(EX).forEach((id) => {
       const a = before[id].load;
       const b = after[id].load;
-      if (a != null && b != null && a !== b) out.push({ name: EX[id].name, from: loadText(EX[id], a), to: loadText(EX[id], b), up: EX[id].kind === 'assist' ? b < a : b > a });
+      if (a != null && b != null && a !== b && EX[id].kind !== 'power') out.push({ name: EX[id].name, from: loadText(EX[id], a), to: loadText(EX[id], b), up: EX[id].kind === 'assist' ? b < a : b > a });
     });
     return out;
   }
@@ -603,7 +761,7 @@
   function liftsDown(ls, today) {
     let down = 0;
     Object.keys(STRENGTH_BESTS).forEach((id) => {
-      const h = ((ls[id] && ls[id].history) || []).filter((x) => x.w >= 2);
+      const h = ((ls[id] && ls[id].history) || []).filter((x) => x.w >= 2 && !x.adjusted);
       const recent = h.filter((x) => diffDays(today, x.date) <= 14);
       const older = h.filter((x) => diffDays(today, x.date) > 14);
       if (!recent.length || !older.length) return;
@@ -631,6 +789,7 @@
     };
   }
   const RICE_CUP = 205;
+  const FUEL_SNACK = { id: 'fuel', time: '10:30 am', name: 'Fuel snack', portions: '2 bananas, 1 cup juice, 1 tbsp honey', portionsGuide: '2 bananas, 1 cup juice, 1 tbsp honey', cal: 400, pro: 3, carb: 95, fat: 1 };
   const RICE_CARB = RICE_CUP / 4; // keeps a meal's macros adding up to its calories as portions change
   const ALMOND_OZ = 165;
   function fractionText(x) {
@@ -641,7 +800,8 @@
     return frac ? `${whole} ${frac}` : String(whole);
   }
   function mealPlan(t) {
-    const delta = t.calories - 2375; // the listed meals total 2,375 of the 2,400 target
+    const fueling = t.calories >= 2750;
+    const delta = t.calories - 2315 - (fueling ? FUEL_SNACK.cal : 0); // the listed meals total 2,315 before rice changes
     let lunchRice = 1.5;
     let dinnerRice = 1;
     let almonds = 1;
@@ -670,11 +830,12 @@
     const meals = [
       { id: 'pre', time: '7:15 am', name: 'Pre-training', portions: '1 banana, coffee', portionsGuide: '1 banana, coffee', cal: 105, pro: 1, carb: 27, fat: 0 },
       { id: 'burrito', time: '9:30 am', name: 'Breakfast burrito', portions: '1 egg, 1 cup egg whites, 3 oz raw 93/7 beef, 150 g potatoes, onions, salsa, 1 carb-counter tortilla', portionsGuide: 'Palm of beef, 1 egg and a good pour of egg whites, a fist of potatoes, onions, salsa, 1 tortilla', cal: 510, pro: 58, carb: 38, fat: 14 },
-      { id: 'lunch', time: '12:30 pm', name: 'Chicken bowl', portions: `6 oz raw chicken breast, ${fractionText(lunchRice)} cup${lunchRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/2 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of chicken, ${lunchRice >= 1.5 ? '2 fists' : '1 fist'} of rice, a fist of vegetables, 1/2 avocado, a drizzle of Bachan's`, cal: 680 - riceCal(1.5) + riceCal(lunchRice), pro: 46, carb: Math.round(79 + (lunchRice - 1.5) * RICE_CARB), fat: 20 },
-      { id: 'snack', time: '4:30 pm', name: 'Portable snack', portions: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? '1 oz' : '1/2 oz'} almonds`, portionsGuide: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? 'a small handful' : 'half a handful'} of almonds`, cal: 420 - (almonds === 1 ? 0 : 82), pro: 31, carb: 34 - (almonds === 1 ? 0 : 3), fat: 18 - (almonds === 1 ? 0 : 7) },
-      { id: 'dinner', time: '8:45 pm', name: 'Dinner', portions: `6 oz raw trout or chicken, ${fractionText(dinnerRice)} cup${dinnerRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/4 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of trout or chicken, ${dinnerRice >= 1.25 ? '1 big fist' : '1 fist'} of rice, a fist of vegetables, 1/4 avocado, a drizzle of Bachan's`, cal: 610 - riceCal(1) + riceCal(dinnerRice), pro: 39, carb: Math.round(68 + (dinnerRice - 1) * RICE_CARB), fat: 20 },
+      { id: 'lunch', time: '12:30 pm', name: 'Chicken bowl', portions: `5 oz raw chicken breast, ${fractionText(lunchRice)} cup${lunchRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/2 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of chicken, ${lunchRice >= 1.5 ? '2 fists' : '1 fist'} of rice, a fist of vegetables, 1/2 avocado, a drizzle of Bachan's`, cal: 650 - riceCal(1.5) + riceCal(lunchRice), pro: 40, carb: Math.round(79 + (lunchRice - 1.5) * RICE_CARB), fat: 20 },
+      { id: 'snack', time: '3:00 pm', name: 'Portable snack', portions: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? '1 oz' : '1/2 oz'} almonds`, portionsGuide: `Ryse protein with almond milk, 1 apple, ${almonds === 1 ? 'a small handful' : 'half a handful'} of almonds`, cal: 420 - (almonds === 1 ? 0 : 82), pro: 31, carb: 34 - (almonds === 1 ? 0 : 3), fat: 18 - (almonds === 1 ? 0 : 7) },
+      { id: 'dinner', time: '8:45 pm', name: 'Dinner', portions: `5 oz raw trout or chicken, ${fractionText(dinnerRice)} cup${dinnerRice === 1 ? '' : 's'} cooked rice, 1 cup vegetables, 1/4 avocado, 1 tbsp Bachan's`, portionsGuide: `Large palm of trout or chicken, ${dinnerRice >= 1.25 ? '1 big fist' : '1 fist'} of rice, a fist of vegetables, 1/4 avocado, a drizzle of Bachan's`, cal: 580 - riceCal(1) + riceCal(dinnerRice), pro: 33, carb: Math.round(68 + (dinnerRice - 1) * RICE_CARB), fat: 20 },
       { id: 'dessert', time: '9:45 pm', name: 'Planned dessert', portions: '1 no-sugar-added strawberry Outshine bar', portionsGuide: '1 no-sugar-added strawberry Outshine bar', cal: 50, pro: 0, carb: 11, fat: 0 }
     ];
+    if (fueling) meals.splice(2, 0, FUEL_SNACK);
     return { meals, total: meals.reduce((a, m) => a + m.cal, 0), protein: meals.reduce((a, m) => a + m.pro, 0), lunchRice, dinnerRice, almonds };
   }
   /* What's been eaten today: logged foods plus any planned meals checked off. */
@@ -758,7 +919,7 @@
     if (!session || session.type !== 'run') return null;
     if (session.d === 5 || session.run.effort === 'long') {
       const m = session.run.miles;
-      if (m && m >= 10) return 'Add 1 banana or 1/2 cup cooked rice afterward, and take 30 to 60 g of carbs per hour during the run.';
+      if (m && m * 11 >= 90) return 'On runs of 90 minutes or longer, take 30 to 90 g of carbs per hour during the run and replace fluid so you lose under 2% of body weight. Eat 1 to 1.85 g of carbs per kg per hour afterward, plus 20 to 40 g of protein.';
       return 'Add 1 banana or 1/2 cup cooked rice after your long run.';
     }
     return null;
@@ -805,13 +966,14 @@
   /* ---------- Weekly summary ---------- */
   function weekSummary(state, w, today) {
     const week = buildWeek(state, w, today);
-    const planned = week.days.filter(countsAsPlanned);
+    const sessions = weekSessions(week);
+    const planned = sessions.filter(countsAsPlanned);
     const done = planned.filter((s) => state.logs[s.id]);
     let miles = 0;
     let longest = 0;
     let talkFails = 0;
     let talkLogged = 0;
-    week.days.forEach((s) => {
+    sessions.forEach((s) => {
       const log = state.logs[s.id];
       if (!log || log.type !== 'run') return;
       const dist = Number(log.distance) || 0;
@@ -849,8 +1011,8 @@
   function plannedMiles(state, w, today) {
     const week = buildWeek(state, w, today);
     let total = 0;
-    week.days.forEach((s) => {
-      if (s.type !== 'run' || s.skippedForBare) return;
+    weekSessions(week).forEach((s) => {
+      if (s.type !== 'run' || s.skippedForBare || s.skippedToday) return;
       if (s.run.kind === 'distance' && s.run.effort !== 'race') total += s.run.miles;
       else if (s.run.kind === 'intervals') total += (s.run.reps * s.run.run * 60) / week.stats.center + (s.run.reps * s.run.walk + 10) / 20;
       else if (s.run.kind === 'minutes') total += (s.run.minutes * 60) / week.stats.center;
@@ -970,9 +1132,8 @@
     activities.sort((a, b) => (a.date + a.clock < b.date + b.clock ? -1 : 1));
     return { activities, unreadable, unit: headerKm ? 'km' : 'mi', total: rows.length - 1 };
   }
-  /* Easy days usually stay under about 150 bpm for you. It's only a starting answer,
-     and you can change it on the review screen. */
-  const talkFromHr = (hr) => (hr == null ? null : hr <= 150 ? 'pass' : 'fail');
+  /* Easy runs should stay at or under 80% of age-predicted max heart rate. Change it on the review screen if needed. */
+  const talkFromHr = (hr) => (hr == null ? null : hr <= HR.easyHi ? 'pass' : 'fail');
   function finishedPlan(session, a, distance) {
     const run = session.run;
     if (!run) return true;
@@ -1006,17 +1167,25 @@
         return item;
       }
       if (a.kind === 'other') return item;
-      const sameDay = week.days.find((s) => s.date === a.date && s.type === a.kind);
+      const sessions = weekSessions(week);
+      const sameDay = sessions.find((s) => s.date === a.date && s.type === a.kind);
       if (sameDay && state.logs[sameDay.id] && state.logs[sameDay.id].source !== 'garmin') {
         item.status = 'manual';
         item.sessionId = sameDay.id;
         item.title = sameDay.title;
         return item;
       }
-      const open = week.days
+      const open = sessions
         .filter((s) => s.type === a.kind && !state.logs[s.id] && !used.has(s.id))
         .sort((x, y) => Math.abs(diffDays(x.date, a.date)) - Math.abs(diffDays(y.date, a.date)) || (x.date < y.date ? -1 : 1));
       if (!open.length) {
+        const dayWithAddon = week.days.find((s) => s.date === a.date && s.addon && !(state.addons && state.addons[s.addon.id]));
+        if (a.kind === 'cardio' && dayWithAddon) {
+          item.status = 'addon';
+          item.sessionId = dayWithAddon.addon.id;
+          item.title = dayWithAddon.addon.title;
+          return item;
+        }
         if (a.kind === 'run' && distance > 0) {
           item.status = 'extra';
           item.title = 'Extra run';
@@ -1031,6 +1200,7 @@
       item.title = s.title;
       item.sessionDate = s.date;
       if (a.kind !== 'lift') item.talk = talkFromHr(a.hr);
+      if (a.kind === 'run' && s.run && HARD_EFFORTS.includes(s.run.effort)) item.talk = 'pass';
       if (a.kind === 'run') {
         item.completed = finishedPlan(s, a, distance);
         item.hard = s.run.effort === 'test' || (s.run.effort === 'race' && s.run.miles > 20);
@@ -1041,7 +1211,7 @@
   }
   function applyGarminImport(state, items, today) {
     const paceBefore = runStats(state, today);
-    const undo = { logIds: [], walkIds: [], extraKeys: [], seenKeys: [] };
+    const undo = { logIds: [], walkIds: [], extraKeys: [], seenKeys: [], addonIds: [] };
     const out = { runs: 0, cardio: 0, lifts: 0, walks: 0, extras: 0, baseline: 0, skipped: 0 };
     const touchedWeeks = new Set();
     state.extras = state.extras || [];
@@ -1072,6 +1242,11 @@
         if (!log.items.walk) { log.items.walk = true; undo.walkIds.push(it.sessionId); }
         state.logs[it.sessionId] = log;
         out.walks++;
+      } else if (it.status === 'addon') {
+        state.addons = state.addons || {};
+        state.addons[it.sessionId] = true;
+        undo.addonIds.push(it.sessionId);
+        out.cardio++;
       } else if (it.status === 'extra' || it.status === 'baseline') {
         state.extras.push({ key: a.key, date: a.date, kind: 'run', name: a.name, distance: it.distance, seconds: a.seconds, hr: a.hr, talk: it.talk, hard: !!it.hard });
         undo.extraKeys.push(a.key);
@@ -1087,7 +1262,7 @@
       const w = weekOf(it.activity.date);
       return w >= 0 && w !== FINALS_WEEK && w !== TRAVEL_WEEK && (it.talk === 'fail' || it.completed === false);
     });
-    if (holds) notes.push('A run came in unfinished or above the talk test, so your running holds at this step before moving on. If that\'s wrong, open the run on the Train tab and change your answer.');
+    if (holds) notes.push('A run came in unfinished or above its heart-rate target, so your running holds at this step before moving on. If that\'s wrong, open the run on the Train tab and change your answer.');
     touchedWeeks.forEach((w) => {
       if (w < 0) return;
       const s = weekSummary(state, w, today);
@@ -1103,6 +1278,7 @@
     const u = state.lastImport;
     if (!u) return false;
     u.logIds.forEach((id) => { delete state.logs[id]; });
+    (u.addonIds || []).forEach((id) => { if (state.addons) delete state.addons[id]; });
     u.walkIds.forEach((id) => { if (state.logs[id] && state.logs[id].items) state.logs[id].items.walk = false; });
     state.extras = (state.extras || []).filter((x) => !u.extraKeys.includes(x.key));
     u.seenKeys.forEach((k) => { delete state.garminSeen[k]; });
@@ -1132,7 +1308,7 @@
     const w = weekOf(today);
     if (w < 0) return null;
     const candidate = dayIndex(today) === 6 ? w : w - 1;
-    if (candidate < 0 || candidate > LAST_WEEK) return null;
+    if (candidate < 0 || candidate >= LAST_WEEK) return null; // no check-in on race day
     if (state.checkins.some((c) => c.week === candidate)) return null;
     return { week: candidate, date: checkinDate(candidate), overdue: candidate < w };
   }
@@ -1149,7 +1325,7 @@
     ];
     if (waistDue(w)) steps.push({ title: 'Measure your waist', text: 'Before breakfast, in centimeters, at the same spot as last time, after a normal breath out.' });
     steps.push(
-      { title: 'Confirm your training', text: 'Check the sessions, mileage, longest run, and talk tests the app counted.' },
+      { title: 'Confirm your training', text: 'Check the sessions, mileage, longest run, and heart-rate results the app counted.' },
       { title: 'Confirm your recovery', text: 'Check average sleep and sleep-device nights, then rate energy, soreness, and cravings from 1 to 10.' },
       { title: 'Note anything that hurt', text: 'Record any pain and anything that made the week hard.' },
       { title: 'Review and apply', text: 'Look over any changes to calories, macros, and training, then shop and meal prep from the updated plan.' }
@@ -1159,6 +1335,7 @@
 
   /* ---------- The weekly check-in rules ---------- */
   const CALORIE_FLOOR = 2100;
+  const MAINTENANCE_CALORIES = 3500; // Cunningham RMR of about 2,060 x activity factor of 1.7
   const FUEL_START_WEEK = 30; // the check-in on Sunday, June 13
   function evaluateCheckin(state, data, today) {
     const w = data.week;
@@ -1204,8 +1381,8 @@
       /* Fat-loss to fuel switch */
       if (!after.maintenance && w >= FUEL_START_WEEK) {
         after.maintenance = true;
-        calorieDelta += 450;
-        calReason = 'Your fat-loss phase ends here. Calories rise to an estimated maintenance level to support the marathon block.';
+        calorieDelta += Math.max(0, MAINTENANCE_CALORIES - after.calories);
+        calReason = 'Your fat-loss phase ends here. Calories rise to an estimated maintenance level for preseason, which puts carbs a little above the NSCA 5-6 g/kg range.';
       }
 
       /* Lasting fatigue or falling lifts */
@@ -1217,7 +1394,7 @@
         calorieDelta += 200;
         calReason = calReason || (down ? 'Two or more main lifts are down over 10%.' : 'Fatigue has lasted two weeks.');
         if (!after.deloadWeeks.includes(w + 1) && !isScheduledDeload(w + 1)) after.deloadWeeks.push(w + 1);
-        addChange({ kind: 'training', title: 'Next week is a deload', detail: 'Lifting drops to 2 sets per exercise with at least 3 reps left, and running drops about 25%.' });
+        addChange({ kind: 'training', title: 'Next week is a deload', detail: 'Lifting drops to 2 sets per exercise at the same weights, and running drops about 25%.' });
       }
 
       if (!after.maintenance || w === FUEL_START_WEEK) {
@@ -1259,7 +1436,7 @@
       const prevMissed = prev ? prev.missed : 0;
       if (summary.missed >= 2 && prevMissed >= 2 && !after.bareWeeks.includes(w + 1) && !state.targets.bareWeeks.includes(w)) {
         after.bareWeeks.push(w + 1);
-        addChange({ kind: 'training', title: 'Next week is a bare-minimum week', detail: 'Do Upper A, Lower, the Tuesday run, and the Saturday run. That week still counts as a win, and the full plan returns the week after.' });
+        addChange({ kind: 'training', title: 'Next week is a bare-minimum week', detail: 'Do Lower A, Push, Pull, the Wednesday run, and the Saturday run. That week still counts as a win, and the full plan returns the week after.' });
       }
 
       /* Cravings */
@@ -1327,11 +1504,334 @@
     return lines.join('\n');
   }
 
+
+  /* ---------- AI coach ----------
+     The AI only proposes. Everything it returns passes through these checks, and nothing
+     changes until you approve it. Medical red flags are caught here, before anything is sent. */
+  const RED_FLAGS = [
+    /chest\s+(pain|pressure|tight\w*|hurts?)|(pain|pressure|tightness)\s+in\s+(my\s+|the\s+)?chest/i,
+    /faint\w*|pass(ed|ing)?\s+out|black(ed|ing)?\s+out|syncope|collaps\w*/i,
+    /short(ness)?\s+of\s+breath|can'?t\s+(catch\s+my\s+|get\s+my\s+)?breath|(trouble|difficulty|hard\s+to)\s+breath\w*|can'?t\s+breathe/i,
+    /dizz\w*|light\s*-?\s*headed|vertigo/i,
+    /heart\s+(is\s+|keeps\s+)?(racing|pounding|fluttering|skipping)|palpitations?|irregular\s+(heart\s*beat|pulse)/i,
+    /(numb\w*|tingl\w*)\s+(in\s+)?(my\s+)?(left\s+)?(arm|jaw|face)|slurred\s+speech|worst\s+headache/i
+  ];
+  const NEGATED = /\b(no|not|without|never|denies|isn'?t|don'?t|didn'?t|haven'?t|hasn'?t|wasn'?t)\b[^.,;!?]{0,20}$/i;
+  function detectRedFlags(text) {
+    const t = String(text || '');
+    return RED_FLAGS.some((re) => {
+      const g = new RegExp(re.source, 'gi');
+      let m;
+      while ((m = g.exec(t))) {
+        const lead = t.slice(0, m.index).split(/\b(?:but|however|though)\b/i).pop();
+        if (!NEGATED.test(lead)) return true;
+        if (m[0].length === 0) g.lastIndex++;
+      }
+      return false;
+    });
+  }
+
+  const aiText = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 400);
+  const aiList = (v, n) => (Array.isArray(v) ? v : []).map((x) => aiText(x, 200)).filter(Boolean).slice(0, n || 4);
+  function validateAiExplanation(p) {
+    if (!p || typeof p !== 'object') return null;
+    const out = { why_in_plan: aiText(p.why_in_plan, 600), setup: aiList(p.setup), cues: aiList(p.cues), common_mistakes: aiList(p.common_mistakes), feel: aiText(p.feel, 300) };
+    return out.why_in_plan || out.cues.length ? out : null;
+  }
+
+  function aiReplacements(s) {
+    const current = sessionExercises(s).map((id) => EX[id].name);
+    const groups = new Set(LIFTS[s.lift].list.map((id) => EX[id].group));
+    const seen = new Set();
+    return Object.keys(EX).filter((id) => {
+      const ex = EX[id];
+      if (ex.kind === 'time' || ex.kind === 'power' || !groups.has(ex.group) || current.includes(ex.name) || seen.has(ex.name)) return false;
+      seen.add(ex.name);
+      return true;
+    });
+  }
+
+  function validateAiAdjustment(state, s, proposal, deload) {
+    const out = { ok: false, stopForCare: false, advice: '', reason: '', changes: [], run: null, rejected: [], lines: [] };
+    if (!proposal || typeof proposal !== 'object') return out;
+    out.ok = true;
+    out.advice = aiText(proposal.advice, 600);
+    out.reason = aiText(proposal.reason, 300);
+    if (proposal.stop_for_care === true) { out.stopForCare = true; return out; }
+    const reject = (what, why) => out.rejected.push({ what, why });
+    const changes = Array.isArray(proposal.exercise_changes) ? proposal.exercise_changes.slice(0, 10) : [];
+    const rc = proposal.run_change && typeof proposal.run_change === 'object' ? proposal.run_change : null;
+
+    if (s.type !== 'lift') {
+      if (changes.length) reject('Exercise changes', 'This isn\'t a lifting session.');
+    } else {
+      if (rc && rc.action && rc.action !== 'keep') reject('Run change', 'This is a lifting session.');
+      const ls = liftState(state);
+      const inSession = sessionExercises(s);
+      const allowed = aiReplacements(s);
+      const touched = new Set();
+      let remaining = inSession.length;
+      changes.forEach((c) => {
+        const id = c && c.exercise_id;
+        const ex = Object.prototype.hasOwnProperty.call(EX, id) ? EX[id] : null;
+        const label = ex ? ex.name : 'An exercise';
+        if (!ex || !inSession.includes(id)) return reject(label, 'It isn\'t in today\'s session.');
+        if (touched.has(id)) return reject(label, 'It already has a change.');
+        const plan = schemeFor(s.w, id, deload);
+        const clean = { action: c.action, id, note: aiText(c.note, 120) };
+        if (c.action === 'remove') {
+          if (remaining <= 1) return reject(label, 'At least one exercise has to stay.');
+          remaining--;
+          touched.add(id);
+          out.changes.push(clean);
+          out.lines.push({ name: label, value: 'Removed today', note: clean.note });
+          return undefined;
+        }
+        let swapTo = null;
+        if (c.action === 'swap') {
+          swapTo = Object.prototype.hasOwnProperty.call(EX, c.replacement_id) ? c.replacement_id : null;
+          if (!swapTo || !allowed.includes(swapTo)) return reject(label, 'The replacement isn\'t a similar exercise from your list.');
+          clean.replacement = swapTo;
+        } else if (c.action !== 'modify') return reject(label, 'The app doesn\'t recognize that kind of change.');
+        const subject = swapTo ? EX[swapTo] : ex;
+        const subjectPlan = swapTo ? schemeFor(s.w, swapTo, deload) : plan;
+        const parts = [];
+        if (c.sets != null) {
+          const hi = deload ? subjectPlan.sets : Math.min(6, subjectPlan.sets + 1);
+          if (!Number.isInteger(c.sets) || c.sets < 1 || c.sets > hi) return reject(subject.name, `Sets must stay between 1 and ${hi}.`);
+          if (c.sets !== subjectPlan.sets) { clean.sets = c.sets; parts.push(`${c.sets} sets`); }
+        }
+        if (c.goal_reps != null) {
+          if (subject.kind === 'time' || subject.kind === 'power') return reject(subject.name, 'Its reps or time can\'t change.');
+          const lo = Math.max(5, subjectPlan.goal - 3);
+          const hi = Math.min(15, subjectPlan.goal + 4);
+          if (!Number.isInteger(c.goal_reps) || c.goal_reps < lo || c.goal_reps > hi) return reject(subject.name, `Reps must stay between ${lo} and ${hi}.`);
+          if (c.goal_reps !== subjectPlan.goal) { clean.goal = c.goal_reps; parts.push(`${c.goal_reps} reps`); }
+        }
+        if (c.weight_lb != null) {
+          const target = targetFor(ls, swapTo || id, s.w);
+          const w = Number(c.weight_lb);
+          if (subject.kind === 'time' || subject.kind === 'power') return reject(subject.name, 'It has no weight to change.');
+          if ((target == null || target === 0) && !swapTo) return reject(subject.name, 'There\'s no target to change from.');
+          if (!Number.isFinite(w)) return reject(subject.name, 'That weight isn\'t a number.');
+          if (target != null && target !== 0) {
+            const rounded = round5(w);
+            if (subject.kind === 'assist') {
+              if (rounded < target) return reject(subject.name, 'Assistance can\'t drop on a day-of change.');
+            } else {
+              const hi = deload ? target : Math.floor((target * 1.05) / 5) * 5;
+              if (rounded > hi) return reject(subject.name, `Weight can't go above ${hi} lb today.`);
+              if (rounded < target * 0.5) return reject(subject.name, 'That cut is too large for a day-of change.');
+            }
+            if (rounded !== target) { clean.weight = rounded; parts.push(`${rounded} lb`); }
+          }
+        }
+        if (c.action === 'modify' && !parts.length) return reject(label, 'It didn\'t change anything.');
+        touched.add(id);
+        out.changes.push(clean);
+        out.lines.push({ name: label, value: swapTo ? `Swap to ${subject.name}${parts.length ? `, ${parts.join(', ')}` : ''}` : parts.join(', '), note: clean.note });
+        return undefined;
+      });
+    }
+
+    if (s.type !== 'lift' && rc && rc.action && rc.action !== 'keep') {
+      const name = s.title;
+      const note = aiText(rc.note, 120);
+      const isRace = s.run && s.run.effort === 'race';
+      const isCardio = s.type === 'cardio';
+      const a = rc.action;
+      const mins = Number(rc.minutes);
+      const fine = (run, value) => { out.run = Object.assign({ action: a, note }, run); out.lines.push({ name, value, note }); };
+      if (isRace) reject(name, 'Race day can\'t be changed here.');
+      else if (a === 'skip') fine({}, 'Skip today');
+      else if (a === 'swap_bike') {
+        if (isCardio) reject(name, 'This is already cardio.');
+        else if (!Number.isInteger(mins) || mins < 10 || mins > s.minutes) reject(name, `Bike time must be 10 to ${s.minutes} minutes.`);
+        else fine({ minutes: mins }, `Bike for ${mins} minutes, easy`);
+      } else if (a === 'easy') {
+        if (isCardio || !HARD_EFFORTS.includes(s.run.effort)) reject(name, 'It\'s already an easy session.');
+        else fine({}, 'Run it easy');
+      } else if (a === 'shorten') {
+        if (isCardio) {
+          if (!Number.isInteger(mins) || mins < 10 || mins >= s.minutes) reject(name, `Time must be 10 to ${s.minutes - 1} minutes.`);
+          else fine({ minutes: mins }, `${mins} minutes`);
+        } else if (s.run.effort === 'test') reject(name, 'A test can\'t be shortened. Run it easy or move on.');
+        else if (s.run.kind === 'distance') {
+          const miles = Math.round(Number(rc.miles) * 10) / 10;
+          if (!(miles >= 0.5) || miles >= s.run.miles) reject(name, `Distance must be under ${s.run.miles} miles.`);
+          else fine({ miles }, `${miles} miles`);
+        } else if (s.run.kind === 'minutes') {
+          if (!Number.isInteger(mins) || mins < 10 || mins >= s.run.minutes) reject(name, `Time must be under ${s.run.minutes} minutes.`);
+          else fine({ minutes: mins }, `${mins} minutes`);
+        } else {
+          const reps = Number.isInteger(mins) ? Math.floor((mins - 10) / (s.run.run + s.run.walk)) : 0;
+          if (reps < 1 || reps >= s.run.reps) reject(name, `Time must fit fewer than ${s.run.reps} rounds.`);
+          else fine({ reps, minutes: reps * (s.run.run + s.run.walk) + 10 }, `${reps} rounds, ${reps * (s.run.run + s.run.walk) + 10} minutes`);
+        }
+      } else reject(name, 'The app doesn\'t recognize that kind of change.');
+    }
+    return out;
+  }
+  function buildOverride(checked, today) {
+    return { at: today, advice: checked.advice, reason: checked.reason, changes: checked.changes, run: checked.run, lines: checked.lines };
+  }
+
+  function validateAiCheckin(state, rec, proposal) {
+    const out = { ok: false, stopForCare: false, headline: '', went: [], watch: [], suggestions: [], reason: '', calorie: null, deload: false, lifts: [], rejected: [] };
+    if (!proposal || typeof proposal !== 'object') return out;
+    out.ok = true;
+    out.headline = aiText(proposal.headline, 300);
+    out.went = aiList(proposal.what_went_well, 3);
+    out.watch = aiList(proposal.watch_out, 3);
+    out.suggestions = aiList(proposal.suggestions, 3);
+    if (proposal.stop_for_care === true) {
+      out.stopForCare = true;
+      return out;
+    }
+    const p = proposal.proposed && typeof proposal.proposed === 'object' ? proposal.proposed : {};
+    out.reason = aiText(p.proposal_reason, 300);
+    const reject = (what, why) => out.rejected.push({ what, why });
+    const w = rec.week;
+    const d = rec.data;
+    const blocked = rec.alerts.some((a) => a.level === 'critical') ? 'You reported a symptom that needs care first.' : w === TRAVEL_WEEK ? 'Nothing changes on a travel week.' : null;
+
+    const delta = p.calorie_delta;
+    if (delta != null && delta !== 0) {
+      const rounded = Math.round(Number(delta) / 25) * 25;
+      const to = rec.after.calories + rounded;
+      if (blocked) reject('Calories', blocked);
+      else if (!Number.isFinite(rounded) || rounded < -150 || rounded > 200) reject('Calories', 'A change must stay between -150 and +200.');
+      else if (rec.after.calories !== rec.before.calories) reject('Calories', 'The rules already changed calories this week.');
+      else if (to < CALORIE_FLOOR) reject('Calories', `Calories can't go below ${CALORIE_FLOOR.toLocaleString('en-US')}.`);
+      else if (rounded < 0 && (Number(d.energy) < 5 || Number(d.cravings) >= 7 || d.trackingBackfired || rec.lossRate == null || rec.lossRate >= 0.5 || d.pain)) reject('Calories', 'Your data this week doesn\'t support a cut.');
+      else if (rounded !== 0) out.calorie = { delta: rounded, to };
+    }
+    if (p.add_deload_next_week === true) {
+      if (blocked) reject('Deload', blocked);
+      else if (w + 1 >= 46) reject('Deload', 'Taper already covers this.');
+      else if (!isScheduledDeload(w + 1) && !rec.after.deloadWeeks.includes(w + 1)) out.deload = true;
+    }
+    const ls = liftState(state);
+    const lifts = Array.isArray(p.lift_targets) ? p.lift_targets : [];
+    const seen = new Set();
+    lifts.forEach((c, i) => {
+      const id = c && c.exercise_id;
+      const ex = Object.prototype.hasOwnProperty.call(EX, id) ? EX[id] : null;
+      const name = ex ? ex.name : 'A lift';
+      if (blocked) return reject(name, blocked);
+      if (i >= 4 || out.lifts.length >= 4) return reject(name, 'Only 4 lift targets can change at once.');
+      if (!ex || (ex.kind !== 'weight' && ex.kind !== 'assist')) return reject(name, 'Its target can\'t change this way.');
+      if (seen.has(id)) return reject(name, 'It already has a change.');
+      const st = ls[id];
+      const from = targetFor(ls, id, w + 1);
+      if (from == null || from === 0) return reject(name, 'It has no target yet.');
+      if (!st.last || st.last.w < 0) return reject(name, 'It has no logged session in the plan yet.');
+      const to = round5(Number(c.weight_lb));
+      if (!Number.isFinite(to) || to === from) return undefined;
+      const harder = ex.kind === 'assist' ? to < from : to > from;
+      const step = ex.kind === 'assist' ? 10 : increment(ex);
+      if (harder) {
+        const goal = schemeFor(st.last.w, id, false).goal;
+        const lastSet = st.last.sets[st.last.sets.length - 1];
+        const nextDeload = isScheduledDeload(w + 1) || rec.after.deloadWeeks.includes(w + 1) || out.deload || w + 1 === TRAVEL_WEEK;
+        if (Math.abs(to - from) > step) return reject(name, `A raise can be ${step} lb at most.`);
+        if (st.status === 'up' && st.last.w === w) return reject(name, 'The 2-for-2 rule just raised it.');
+        if (!lastSet || Number(lastSet.r) < goal) return reject(name, `Your last set didn't reach the ${goal}-rep goal.`);
+        if (d.pain) return reject(name, 'You reported pain this week.');
+        if (nextDeload) return reject(name, 'Next week is an unloading week.');
+      } else if (ex.kind === 'weight' && to < from * 0.9) return reject(name, 'A cut can be 10% at most.');
+      else if (ex.kind === 'assist' && to - from > 20) return reject(name, 'That change is too large.');
+      seen.add(id);
+      out.lifts.push({ id, name, from, to, up: harder, reason: aiText(c.reason, 160), fromText: loadText(ex, from), toText: loadText(ex, to) });
+      return undefined;
+    });
+    return out;
+  }
+  const aiHasProposal = (r) => !!(r && (r.calorie || r.deload || r.lifts.length));
+  /* Adds an approved proposal to a check-in record. */
+  function applyAiCheckin(rec, review) {
+    const w = rec.week;
+    if (review.calorie) {
+      rec.after.calories = review.calorie.to;
+      rec.changes.push({ kind: 'calories', title: `Daily calories: ${review.calorie.to - review.calorie.delta} to ${review.calorie.to}`, detail: `You approved this from your AI review. ${review.reason}`.trim() });
+    }
+    if (review.deload) {
+      rec.after.deloadWeeks.push(w + 1);
+      rec.changes.push({ kind: 'training', title: 'Next week is a deload', detail: `You approved this from your AI review. ${review.reason}`.trim() });
+    }
+    rec.loadEdits = review.lifts.map((l) => ({ id: l.id, week: w, from: l.from, to: l.to, reason: l.reason }));
+    rec.liftChanges = (rec.liftChanges || []).concat(review.lifts.map((l) => ({ name: l.name, from: l.fromText, to: l.toText, up: l.up })));
+    rec.aiApplied = true;
+    return rec;
+  }
+
+  /* What the AI sees. Only what's needed for the question, with no name or sleep-device data. */
+  function aiLiftRow(ls, s, id, deload) {
+    const ex = EX[id];
+    const st = ls[id];
+    const plan = sessionPlan(s, id, deload);
+    return { id, name: ex.name, kind: ex.kind, core: !!ex.core, sets: plan.sets, goal_reps: plan.goal, rest: plan.rest, target: loadText(ex, sessionTarget(ls, s, id)), last: st.last ? st.last.sets.map((x) => `${x.w == null ? '' : `${x.w}x`}${x.r}`).join(', ') : null, last_status: st.status };
+  }
+  function aiRunRow(s) {
+    if (s.type === 'cardio') return { kind: 'cardio', minutes: s.minutes };
+    const r = s.run;
+    return { kind: r.kind, effort: r.effort || 'easy', miles: r.miles || null, minutes: s.minutes, rounds: r.reps || null, run_minutes: r.run || null, walk_minutes: r.walk || null, tempo_minutes: r.tempoMin || null, goal: s.goal ? s.goal.headline : null };
+  }
+  function aiPhase(w) {
+    const p = phaseOf(Math.max(0, w));
+    return { week: w + 1, phase: p.name, deload: isScheduledDeload(w), travel: w === TRAVEL_WEEK };
+  }
+  function aiExplainContext(state, s, id, deload) {
+    if (id) {
+      const ls = liftState(state);
+      const ex = EX[id];
+      const best = ls[id].history.slice(-1)[0];
+      return Object.assign(aiPhase(s.w), { subject: 'exercise', exercise: aiLiftRow(ls, s, id, deload), session: s.title, muscle_area: ex.group, best_estimated_1rm: best ? Math.round(ls[id].oneRm) : null, strength_goal: STRENGTH_GOALS[id] || null });
+    }
+    return Object.assign(aiPhase(s.w), { subject: 'run', title: s.title, run: aiRunRow(s), heart_rate_target: `${HR.easyLo}-${HR.easyHi} bpm`, purpose_note: s.subtitle || '' });
+  }
+  function aiAdjustContext(state, s, today, input, deload) {
+    const day = state.days[today] || {};
+    const ctx = Object.assign(aiPhase(s.w), {
+      date: today,
+      session: { title: s.title, type: s.type, minutes: s.minutes },
+      morning: { sleep_hours: day.sleep == null ? null : day.sleep, resting_hr: day.rhr == null ? null : day.rhr, soreness_out_of_10: day.soreness == null ? null : day.soreness, readiness: (readiness(state, today) || {}).score || null, cautions: backOff(state, today).map((b) => b.title) },
+      today: { minutes_available: input.minutes || null, energy: input.energy || null, soreness: input.soreness || null }
+    });
+    if (s.type === 'lift') {
+      const ls = liftState(state);
+      ctx.session.exercises = sessionExercises(s).map((id) => aiLiftRow(ls, s, id, deload));
+      ctx.replacements = aiReplacements(s).map((id) => ({ id, name: EX[id].name, kind: EX[id].kind }));
+    } else ctx.session.run = aiRunRow(s);
+    return ctx;
+  }
+  function aiCheckinContext(state, rec, today) {
+    const ls = liftState(state);
+    const d = rec.data;
+    const history = state.checkins.filter((c) => c.week < rec.week).sort((a, b) => a.week - b.week).slice(-4).map((c) => ({ week: c.week + 1, weight: c.data.weightAvg, waist: c.data.waist || null, energy: c.data.energy, soreness: c.data.soreness, cravings: c.data.cravings, done: c.summary.done, planned: c.summary.planned, miles: c.summary.miles, calories: c.after.calories }));
+    const lifts = {};
+    Object.keys(EX).forEach((id) => {
+      const st = ls[id];
+      if (!st.last || (EX[id].kind !== 'weight' && EX[id].kind !== 'assist')) return;
+      lifts[id] = { name: EX[id].name, next_target: loadText(EX[id], targetFor(ls, id, rec.week + 1)), last: st.last.sets.map((x) => `${x.w == null ? '' : `${x.w}x`}${x.r}`).join(', '), goal_reps: schemeFor(st.last.w, id, false).goal, status: st.status };
+    });
+    const stats = runStats(state, today);
+    return Object.assign(aiPhase(rec.week), {
+      next_week_scheduled_deload: isScheduledDeload(rec.week + 1),
+      this_week: { average_weight: d.weightAvg, waist_cm: d.waist || null, sessions_done: rec.summary.done, sessions_planned: rec.summary.planned, miles: rec.summary.miles, longest_run: rec.summary.longest, heart_rate_fails: rec.summary.talkFails, average_sleep: d.sleepAvg, energy: d.energy, soreness: d.soreness, cravings: d.cravings, followed_food_plan: d.food, pain: !!d.pain, loss_rate_lb_per_week: rec.lossRate },
+      history,
+      targets: { calories: rec.after.calories, floor: CALORIE_FLOOR, maintenance: !!rec.after.maintenance },
+      rules_already_decided: { changes: rec.changes.map((c) => c.title), notes: rec.notes },
+      easy_pace: `${fmtPace(stats.easyLo)} to ${fmtPace(stats.easyHi)}`,
+      lifts
+    });
+  }
+
   /* ---------- Checkpoints ---------- */
   const CHECKPOINTS = [
     { date: '2027-02-07', weight: [195, 198], waist: [88, 90], run: 'Run 3 miles without stopping. Under 9:00 per mile is the stretch goal.', strength: 'Match or beat your current best sets' },
-    { date: '2027-05-02', weight: [186, 191], waist: [84, 87], run: 'Finish the Motor City Half on April 25 at an easy effort.', strength: 'Keep climbing toward your June 13 lift goals' },
-    { date: '2027-10-17', weight: [180, 188], waist: null, run: 'Finish healthy first, then under 4:00, with 3:30 as the stretch goal.', strength: 'Hold your June lift numbers within about 5%' }
+    { date: '2027-05-02', weight: [186, 191], waist: [84, 87], run: 'Complete a 10-mile long, slow distance run.', strength: 'Keep climbing toward your June 13 lift goals' },
+    { date: '2027-10-17', weight: [180, 188], waist: null, run: 'Finish healthy first, then under 4:30, with under 4:00 as the stretch goal.', strength: 'Hold your June lift numbers within about 5%' }
   ];
   const nextCheckpoint = (today) => CHECKPOINTS.find((c) => c.date >= today) || CHECKPOINTS[CHECKPOINTS.length - 1];
 
@@ -1350,8 +1850,8 @@
     };
     for (let w = Math.max(0, fromWeek); w < Math.min(LAST_WEEK + 1, fromWeek + count); w++) {
       const week = buildWeek(state, w, today);
-      week.days.forEach((s) => {
-        if (!s.time || s.skippedForBare || s.minutes <= 0) return;
+      weekSessions(week).forEach((s) => {
+        if (!s.time || s.skippedForBare || s.skippedToday || s.minutes <= 0) return;
         push(s.id, s.date, s.time, s.minutes, s.title, (s.subtitle || '').replace(/,/g, '\\,'));
       });
       push(`checkin${w}`, checkinDate(w), state.checkinTime, 20, 'Weekly check-in', 'Open the Detroit 26.2 app and complete your check-in before breakfast.');
@@ -1361,10 +1861,10 @@
   }
 
   return {
-    START, RACE, HALF, LAST_WEEK, TRAVEL_WEEK, FINALS_WEEK, EX, LIFTS, STRENGTH_BESTS, STRENGTH_GOALS, DAY_NAMES, DAY_SHORT, CHECKPOINTS, CALORIE_FLOOR,
-    addDays, diffDays, fmtDate, dayIndex, weekOf, weekStart, dateOf, fmtPace, fmtDur, fmtTime, e1rm, increment,
+    START, RACE, HALF, HR, LIFT_SCHEMES, MILEAGE, LAST_WEEK, TRAVEL_WEEK, FINALS_WEEK, EX, LIFTS, STRENGTH_BESTS, STRENGTH_GOALS, DAY_NAMES, DAY_SHORT, CHECKPOINTS, CALORIE_FLOOR,
+    addDays, diffDays, fmtDate, dayIndex, weekOf, weekStart, dateOf, fmtPace, fmtDur, fmtTime, e1rm, pctFromReps, schemeFor, targetFor, sessionExercises, weekSessions, increment,
     initialState, phaseOf, buildWeek, liftState, macros, mealPlan, trackingToday, longRunFuel, readiness, backOff,
     parseCsv, parseGarminCsv, planGarminImport, applyGarminImport, undoGarminImport, garminBaseline, loadText, liftChanges, foodTotals, rangeStatus, scaleFood, caloriesFromMacros, exerciseHistory, weekSummary, plannedMiles, checkinDate, waistDue, dueCheckin, nextCheckinWeek, checkinInstructions, evaluateCheckin,
-    buildCheckinRecord, checkinSummaryText, nextCheckpoint, runStats, runShift, countsAsPlanned, buildIcs, isScheduledDeload, MARATHON_TIERS
+    buildCheckinRecord, checkinSummaryText, detectRedFlags, validateAiExplanation, validateAiAdjustment, validateAiCheckin, aiHasProposal, applyAiCheckin, buildOverride, aiReplacements, aiExplainContext, aiAdjustContext, aiCheckinContext, sessionPlan, sessionTarget, exerciseOverride, nextCheckpoint, runStats, runShift, countsAsPlanned, buildIcs, isScheduledDeload, MARATHON_TIERS
   };
 });
